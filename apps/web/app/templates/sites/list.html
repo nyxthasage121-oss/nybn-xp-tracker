@@ -45,8 +45,8 @@
             <!-- Predator types / DCs -->
             <div class="mb-2">
               {% for pt in site.predator_types %}
-              <span class="badge {% if pt.dc == 2 %}bg-success{% elif pt.dc == 3 %}bg-secondary{% else %}bg-danger{% endif %} me-1">
-                {{ pt.type }} DC {{ pt.dc }}
+              <span class="site-dc-badge {% if pt.dc == 2 %}site-dc-easy{% elif pt.dc == 3 %}site-dc-mid{% else %}site-dc-hard{% endif %} me-1">
+                {{ pt.type }} <span class="site-dc-num">DC {{ pt.dc }}</span>
               </span>
               {% endfor %}
             </div>
