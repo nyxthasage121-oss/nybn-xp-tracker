@@ -1,0 +1,13 @@
+﻿"""misc/percentile.py - Roll a percentaile."""
+
+import enoch
+
+
+async def percentile(ctx, ceiling: int):
+    """Roll between 1 and the ceiling."""
+    if ceiling < 1:
+        await ctx.respond("The ceiling must be greater than 0!", ephemeral=True)
+        return
+
+    result = Enoch.random(ceiling)
+    await ctx.respond(f"Rolling 1-{ceiling}: **{result}**")

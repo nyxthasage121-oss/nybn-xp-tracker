@@ -1,0 +1,67 @@
+﻿skip_clone: true
+when:
+  - branch: master
+    event: push
+  - event: tag
+  - event: pull_request
+  - event: manual
+
+steps:
+  - name: clone
+    image: sh
+    commands:
+      - git clone "$CI_REPO_CLONE_URL" .
+      - git checkout "$CI_COMMIT_SHA"
+
+  - name: lint
+    image: sh
+    commands:
+      - ruff check
+
+  - name: install-dev
+    image: sh
+    commands:
+      - uv sync
+
+  - name: unit tests
+    image: sh
+    environment:
+      ADMIN_SERVER:
+        from_secret: ADMIN_SERVER
+      MONGO_URL:
+        from_secret: MONGO_URL
+      SUPPORTER_GUILD:
+        from_secret: SUPPORTER_GUILD
+      SUPPORTER_ROLE:
+        from_secret: SUPPORTER_ROLE
+      ENOCH_API_TOKEN:
+        from_secret: ENOCH_API_TOKEN
+      GITHUB_TOKEN:
+        from_secret: GITHUB_TOKEN
+    commands:
+      - uv run pytest -q
+
+  - name: uninstall-dev
+    image: sh
+    when:
+      - event: tag
+      - event: manual
+    commands:
+      - uv sync --no-dev
+
+  - name: copy-artifacts
+    image: sh
+    when:
+      - event: tag
+      - event: manual
+    commands:
+      - mkdir -p /mnt/build-artifacts/${CI_REPO_NAME}
+      - rsync -a --delete --exclude '.git' --exclude '.venv' . /mnt/build-artifacts/${CI_REPO_NAME}
+
+  - name: redeploy
+    image: sh
+    when:
+      - event: tag
+      - event: manual
+    commands:
+      - ssh -tt Enoch
