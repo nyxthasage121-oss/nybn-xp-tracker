@@ -188,6 +188,33 @@ class CoterieSpend:
 
 
 @dataclass
+class CoterieMerit:
+    merit_id: int = 0
+    coterie_id: int = 0
+    character_name: str = ''
+    merit_name: str = ''
+    dots: int = 1
+    merit_type: str = 'purchased'  # purchased / creation / donated
+    xp_cost: int = 0
+    status: str = 'Pending'        # Pending / Approved / Denied
+    justification: str = ''
+    reviewed_by: str = ''
+    review_date: str = ''
+    st_notes: str = ''
+    timestamp: str = ''
+
+
+@dataclass
+class CoterieFlaw:
+    flaw_id: int = 0
+    coterie_id: int = 0
+    flaw_name: str = ''
+    dots_granted: int = 1
+    added_by: str = ''
+    added_at: str = ''
+
+
+@dataclass
 class HuntingSite:
     site_id: int = 0
     name: str = ''

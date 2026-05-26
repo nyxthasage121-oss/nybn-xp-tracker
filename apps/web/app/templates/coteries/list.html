@@ -16,8 +16,8 @@
     <div class="card border-secondary">
       <div class="card-header fw-semibold">New Coterie</div>
       <div class="card-body">
-        <form method="POST" action="{{ url_for('coteries.create') }}">
-          <div class="row g-3">
+        <form method="POST" action="{{ url_for('coteries.create') }}" id="create-coterie-form-el">
+          <div class="row g-3 mb-3">
             <div class="col-md-4">
               <label class="form-label fw-semibold">Name <span class="text-danger">*</span></label>
               <input type="text" name="name" class="form-control" required maxlength="200"
@@ -28,13 +28,62 @@
               <input type="text" name="description" class="form-control" maxlength="500"
                      placeholder="Optional short description">
             </div>
-            <div class="col-12 d-flex gap-2">
-              <button type="submit" class="btn btn-danger">Create</button>
-              <button type="button" class="btn btn-outline-secondary"
-                      data-bs-toggle="collapse" data-bs-target="#create-coterie-form">Cancel</button>
+          </div>
+
+          <!-- Founding members -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold">
+              Founding Members <span class="text-danger">*</span>
+              <span class="text-muted fw-normal small ms-1">(minimum 3 required)</span>
+            </label>
+            {% if available_chars %}
+            <div class="border border-secondary rounded p-2" style="max-height:220px;overflow-y:auto;">
+              <div class="row g-1">
+                {% for char in available_chars %}
+                <div class="col-sm-6 col-md-4">
+                  <div class="form-check">
+                    <input class="form-check-input founding-member-check" type="checkbox"
+                           name="founding_members" value="{{ char.character_name }}"
+                           id="fc-{{ loop.index }}">
+                    <label class="form-check-label small" for="fc-{{ loop.index }}">
+                      {{ char.character_name }}
+                      {% if char.clan %}<span class="text-muted">({{ char.clan }})</span>{% endif %}
+                    </label>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
             </div>
+            <div class="form-text" id="member-count-hint">
+              <span id="member-count-val">0</span> selected — select at least 3.
+            </div>
+            {% else %}
+            <div class="alert alert-warning py-2 mb-0 small">
+              No eligible characters available. Add active characters to the roster first.
+            </div>
+            {% endif %}
+          </div>
+
+          <div class="d-flex gap-2 align-items-center">
+            <button type="submit" class="btn btn-danger" id="create-coterie-btn" disabled>Create</button>
+            <button type="button" class="btn btn-outline-secondary"
+                    data-bs-toggle="collapse" data-bs-target="#create-coterie-form">Cancel</button>
           </div>
         </form>
+
+        <script>
+        (function () {
+          var checks = document.querySelectorAll('.founding-member-check');
+          var countEl = document.getElementById('member-count-val');
+          var submitBtn = document.getElementById('create-coterie-btn');
+          function update() {
+            var n = document.querySelectorAll('.founding-member-check:checked').length;
+            countEl.textContent = n;
+            submitBtn.disabled = n < 3;
+          }
+          checks.forEach(function (c) { c.addEventListener('change', update); });
+        })();
+        </script>
       </div>
     </div>
   </div>
@@ -103,10 +152,11 @@
       <div class="card-body">
         <h6 class="text-danger">Formation</h6>
         <ul class="small">
-          <li>Up to <strong>6 members</strong> per coterie (including founder).</li>
+          <li>Requires at least <strong>3 founding members</strong>; up to <strong>6 members</strong> total.</li>
           <li>Each member must be an active character not already in another coterie.</li>
           <li>At creation: distribute <strong>5 dots</strong> across Chasse, Lien, and Portillon.</li>
-          <li>Coteries formed after a timeskip receive starting dots assigned by staff.</li>
+          <li>Each founding member contributes <strong>2 free creation dots</strong> for coterie merits/advantages.</li>
+          <li>Taking Coterie Flaws at creation grants additional creation dots.</li>
         </ul>
         <h6 class="text-danger mt-3">Ratings</h6>
         <ul class="small">
@@ -124,10 +174,16 @@
             <tr><td>5</td><td>3 sites</td><td>Chasse 5 → DC 1</td></tr>
           </tbody>
         </table>
-        <h6 class="text-danger mt-3">Coterie Spends</h6>
+        <h6 class="text-danger mt-3">Coterie Spends (Ratings)</h6>
         <ul class="small">
-          <li>Cost is <strong>3 XP per dot</strong> per member for all three ratings.</li>
+          <li>Cost is <strong>3 XP per dot</strong> per member for Chasse, Lien, and Portillon.</li>
           <li>All members must commit their share before staff can approve.</li>
+        </ul>
+        <h6 class="text-danger mt-3">Merits &amp; Advantages</h6>
+        <ul class="small">
+          <li>Individual members may purchase coterie merits for <strong>3 XP per dot</strong> (1–5 dots).</li>
+          <li>Purchased merits require staff approval and deduct XP from the buying member only.</li>
+          <li>Creation dots are free at formation; donated merits are staff-granted at no XP cost.</li>
         </ul>
       </div>
     </div>

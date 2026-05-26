@@ -225,6 +225,41 @@ class DbCoterieSpend(db.Model):
     timestamp = db.Column(String(20), default='')
 
 
+class DbCoterieMerit(db.Model):
+    """An individual merit/advantage for a coterie member.
+
+    merit_type:
+    - purchased : member buys post-creation, costs 3 XP/dot, needs staff approval
+    - creation  : uses the free creation dot budget (auto-approved)
+    - donated   : staff-granted advantage, no XP cost (auto-approved)
+    """
+    __tablename__ = 'coterie_merits'
+    id = db.Column(Integer, primary_key=True)
+    coterie_id = db.Column(Integer, db.ForeignKey('coteries.id'), nullable=False, index=True)
+    character_name = db.Column(String(200), nullable=False, index=True)
+    merit_name = db.Column(String(200), nullable=False)
+    dots = db.Column(Integer, default=1)
+    merit_type = db.Column(String(20), default='purchased')  # purchased / creation / donated
+    xp_cost = db.Column(Integer, default=0)
+    status = db.Column(String(20), default='Pending', index=True)  # Pending / Approved / Denied
+    justification = db.Column(Text, default='')
+    reviewed_by = db.Column(String(100), default='')
+    review_date = db.Column(String(20), default='')
+    st_notes = db.Column(Text, default='')
+    timestamp = db.Column(String(20), default='')
+
+
+class DbCoterieFlaw(db.Model):
+    """A flaw taken by the coterie at creation, granting bonus creation dots."""
+    __tablename__ = 'coterie_flaws'
+    id = db.Column(Integer, primary_key=True)
+    coterie_id = db.Column(Integer, db.ForeignKey('coteries.id'), nullable=False, index=True)
+    flaw_name = db.Column(String(200), nullable=False)
+    dots_granted = db.Column(Integer, default=1)
+    added_by = db.Column(String(100), default='')
+    added_at = db.Column(String(20), default='')
+
+
 class DbHuntingSite(db.Model):
     """A NYC hunting location with predator-type DCs, a site bonus, and optional coterie ownership."""
     __tablename__ = 'hunting_sites'

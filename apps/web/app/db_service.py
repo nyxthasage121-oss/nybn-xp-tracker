@@ -18,12 +18,14 @@ from app.db import (
     DbCharacter, DbPlayPeriod, DbCriteria,
     DbXPClaim, DbSpendRequest, DbLedgerEntry, DbAuditLog,
     DbCoterie, DbCoterieMembership, DbCoterieSpend, DbHuntingSite,
+    DbCoterieMerit, DbCoterieFlaw,
     DbChronicleSettings, DbPlayerProfile,
 )
 from app.models import (
     Character, PlayPeriod, Criteria, XPClaim,
     SpendRequest, LedgerEntry, AuditEntry,
     Coterie, CoterieSpend, HuntingSite,
+    CoterieMerit, CoterieFlaw,
     ChronicleSettings, PlayerProfile,
     NYBN_SEED_CRITERIA, NYBN_SEED_SITES,
 )
@@ -182,6 +184,35 @@ def _row_to_coterie(row: DbCoterie, members: list[str] | None = None) -> Coterie
         chasse=int(row.chasse or 0),
         lien=int(row.lien or 0),
         portillon=int(row.portillon or 0),
+    )
+
+
+def _row_to_coterie_merit(row: DbCoterieMerit) -> CoterieMerit:
+    return CoterieMerit(
+        merit_id=row.id,
+        coterie_id=row.coterie_id,
+        character_name=row.character_name or '',
+        merit_name=row.merit_name or '',
+        dots=int(row.dots or 1),
+        merit_type=row.merit_type or 'purchased',
+        xp_cost=int(row.xp_cost or 0),
+        status=row.status or 'Pending',
+        justification=row.justification or '',
+        reviewed_by=row.reviewed_by or '',
+        review_date=row.review_date or '',
+        st_notes=row.st_notes or '',
+        timestamp=row.timestamp or '',
+    )
+
+
+def _row_to_coterie_flaw(row: DbCoterieFlaw) -> CoterieFlaw:
+    return CoterieFlaw(
+        flaw_id=row.id,
+        coterie_id=row.coterie_id,
+        flaw_name=row.flaw_name or '',
+        dots_granted=int(row.dots_granted or 1),
+        added_by=row.added_by or '',
+        added_at=row.added_at or '',
     )
 
 
@@ -1675,6 +1706,198 @@ class DBService:
         row.active = True
         db.session.commit()
         self.log_action(staff_user, 'unarchive_coterie', row.name, 'Coterie unarchived.')
+
+    # ── Coterie Merits / Advantages ───────────────────────────────────────────
+
+    def get_coterie_merits(self, coterie_id: int) -> list[CoterieMerit]:
+        rows = DbCoterieMerit.query.filter_by(coterie_id=coterie_id).order_by(
+            DbCoterieMerit.timestamp.asc()
+        ).all()
+        return [_row_to_coterie_merit(r) for r in rows]
+
+    def submit_coterie_merit(
+        self,
+        coterie_id: int,
+        character_name: str,
+        merit_name: str,
+        dots: int,
+        merit_type: str,
+        justification: str = '',
+    ) -> CoterieMerit:
+        """Record or request a coterie merit/advantage.
+
+        merit_type:
+        - 'purchased': costs 3 XP/dot, creates a Pending request for staff approval.
+        - 'creation':  free from creation dot budget, auto-approved.
+        - 'donated':   staff-granted at no cost, auto-approved.
+
+        Raises ValueError if budget is exhausted (creation) or the character is
+        not a coterie member (purchased/creation).
+        """
+        coterie = DbCoterie.query.get(coterie_id)
+        if not coterie:
+            raise ValueError(f'Coterie {coterie_id} not found.')
+
+        if dots < 1 or dots > 5:
+            raise ValueError('Dots must be between 1 and 5.')
+
+        merit_type = merit_type.strip().lower()
+        if merit_type not in ('purchased', 'creation', 'donated'):
+            raise ValueError('Invalid merit type. Use purchased, creation, or donated.')
+
+        # Membership check for member-owned types
+        if merit_type in ('purchased', 'creation'):
+            membership = DbCoterieMembership.query.filter(
+                DbCoterieMembership.coterie_id == coterie_id,
+                func.lower(DbCoterieMembership.character_name) == character_name.lower(),
+            ).first()
+            if not membership:
+                raise ValueError(f'{character_name} is not a member of this coterie.')
+
+        xp_cost = dots * 3 if merit_type == 'purchased' else 0
+
+        # Validate creation dot budget
+        if merit_type == 'creation':
+            budget = self.get_creation_dot_budget(coterie_id)
+            if budget['remaining'] < dots:
+                raise ValueError(
+                    f'Not enough creation dots remaining. '
+                    f'Available: {budget["remaining"]}, requested: {dots}.'
+                )
+
+        # Creation and donated merits are auto-approved; purchased go Pending
+        initial_status = 'Approved' if merit_type in ('creation', 'donated') else 'Pending'
+
+        row = DbCoterieMerit(
+            coterie_id=coterie_id,
+            character_name=character_name,
+            merit_name=merit_name.strip(),
+            dots=dots,
+            merit_type=merit_type,
+            xp_cost=xp_cost,
+            status=initial_status,
+            justification=justification.strip(),
+            timestamp=_now_str(),
+        )
+        db.session.add(row)
+        db.session.commit()
+        return _row_to_coterie_merit(row)
+
+    def approve_coterie_merit(self, merit_id: int,
+                              reviewer: str, notes: str = '') -> None:
+        """Approve a pending purchased merit. Deducts XP from the member."""
+        row = DbCoterieMerit.query.get(merit_id)
+        if not row:
+            raise ValueError(f'Merit {merit_id} not found.')
+        if row.status != 'Pending':
+            raise ValueError(f'Merit is already {row.status}.')
+
+        row.status = 'Approved'
+        row.reviewed_by = reviewer
+        row.review_date = _now_str()
+        row.st_notes = notes
+
+        if row.merit_type == 'purchased' and row.xp_cost > 0:
+            coterie = DbCoterie.query.get(row.coterie_id)
+            coterie_name = coterie.name if coterie else str(row.coterie_id)
+            ledger_row = DbLedgerEntry(
+                character_name=row.character_name,
+                date=_today_str(),
+                awarded=0,
+                spent=row.xp_cost,
+                reason=f'Coterie Merit ({coterie_name}): {row.merit_name} ×{row.dots}',
+                entered_by=reviewer,
+                timestamp=_now_str(),
+            )
+            db.session.add(ledger_row)
+
+        db.session.commit()
+
+    def deny_coterie_merit(self, merit_id: int,
+                           reviewer: str, notes: str = '') -> None:
+        row = DbCoterieMerit.query.get(merit_id)
+        if not row:
+            raise ValueError(f'Merit {merit_id} not found.')
+        if row.status not in ('Pending',):
+            raise ValueError(f'Merit is already {row.status}.')
+        row.status = 'Denied'
+        row.reviewed_by = reviewer
+        row.review_date = _now_str()
+        row.st_notes = notes
+        db.session.commit()
+
+    # ── Coterie Flaws ─────────────────────────────────────────────────────────
+
+    def get_coterie_flaws(self, coterie_id: int) -> list[CoterieFlaw]:
+        rows = DbCoterieFlaw.query.filter_by(coterie_id=coterie_id).order_by(
+            DbCoterieFlaw.id.asc()
+        ).all()
+        return [_row_to_coterie_flaw(r) for r in rows]
+
+    def add_coterie_flaw(self, coterie_id: int, flaw_name: str,
+                         dots_granted: int, staff_user: str) -> CoterieFlaw:
+        coterie = DbCoterie.query.get(coterie_id)
+        if not coterie:
+            raise ValueError(f'Coterie {coterie_id} not found.')
+        if dots_granted < 1 or dots_granted > 5:
+            raise ValueError('Dots granted must be between 1 and 5.')
+        row = DbCoterieFlaw(
+            coterie_id=coterie_id,
+            flaw_name=flaw_name.strip(),
+            dots_granted=dots_granted,
+            added_by=staff_user,
+            added_at=_today_str(),
+        )
+        db.session.add(row)
+        db.session.commit()
+        self.log_action(staff_user, 'add_coterie_flaw', coterie.name,
+                        f'Flaw "{flaw_name}" added (+{dots_granted} creation dots).')
+        return _row_to_coterie_flaw(row)
+
+    def remove_coterie_flaw(self, flaw_id: int, staff_user: str) -> None:
+        row = DbCoterieFlaw.query.get(flaw_id)
+        if not row:
+            raise ValueError(f'Flaw {flaw_id} not found.')
+        coterie = DbCoterie.query.get(row.coterie_id)
+        flaw_name = row.flaw_name
+        coterie_name = coterie.name if coterie else str(row.coterie_id)
+        db.session.delete(row)
+        db.session.commit()
+        self.log_action(staff_user, 'remove_coterie_flaw', coterie_name,
+                        f'Flaw "{flaw_name}" removed.')
+
+    def get_creation_dot_budget(self, coterie_id: int) -> dict:
+        """Return the creation dot budget for a coterie.
+
+        Budget  = (member_count × 2) + sum(flaw.dots_granted)
+        Used    = sum of approved creation-type merit dots
+        Remaining = Budget − Used
+        """
+        member_count = DbCoterieMembership.query.filter_by(coterie_id=coterie_id).count()
+
+        flaw_dots = db.session.query(
+            func.coalesce(func.sum(DbCoterieFlaw.dots_granted), 0)
+        ).filter(DbCoterieFlaw.coterie_id == coterie_id).scalar()
+        flaw_dots = int(flaw_dots or 0)
+
+        total_budget = (member_count * 2) + flaw_dots
+
+        used = db.session.query(
+            func.coalesce(func.sum(DbCoterieMerit.dots), 0)
+        ).filter(
+            DbCoterieMerit.coterie_id == coterie_id,
+            DbCoterieMerit.merit_type == 'creation',
+            func.lower(DbCoterieMerit.status) == 'approved',
+        ).scalar()
+        used = int(used or 0)
+
+        return {
+            'member_dots': member_count * 2,
+            'flaw_dots': flaw_dots,
+            'total': total_budget,
+            'used': used,
+            'remaining': max(0, total_budget - used),
+        }
 
     # ── Hunting sites ─────────────────────────────────────────────────────────
 

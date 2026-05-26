@@ -12,8 +12,16 @@ bp = Blueprint('coteries', __name__)
 @require_staff
 def list_coteries():
     coteries = db_service.get_all_coteries()
+    # Characters not yet in any coterie (for the creation form member picker)
+    taken = {m.lower() for c in coteries for m in c.members}
+    active_chars = db_service.get_active_characters()
+    available_chars = sorted(
+        [c for c in active_chars if c.character_name.lower() not in taken],
+        key=lambda c: c.character_name,
+    )
     return render_template('coteries/list.html', coteries=coteries,
-                           coterie_max=COTERIE_MAX_MEMBERS)
+                           coterie_max=COTERIE_MAX_MEMBERS,
+                           available_chars=available_chars)
 
 
 @bp.route('/<int:coterie_id>')
@@ -44,6 +52,12 @@ def detail(coterie_id: int):
 
     sites = db_service.get_coterie_sites(coterie_id)
 
+    merits = db_service.get_coterie_merits(coterie_id)
+    flaws = db_service.get_coterie_flaws(coterie_id)
+    creation_budget = db_service.get_creation_dot_budget(coterie_id)
+    pending_merits = [m for m in merits if m.status == 'Pending']
+    approved_merits = [m for m in merits if m.status == 'Approved']
+
     def _dots(n, mx=5):
         return '●' * n + '○' * (mx - n)
 
@@ -62,6 +76,11 @@ def detail(coterie_id: int):
         f'**Lien:** {_dots(coterie.lien)}  ·  '
         f'**Portillon:** {_dots(coterie.portillon)}'
     )
+    if approved_merits:
+        lines.append('')
+        lines.append('**Merits & Advantages:**')
+        for m in sorted(approved_merits, key=lambda x: (x.character_name, x.merit_name)):
+            lines.append(f'- {m.character_name}: {m.merit_name} ×{m.dots}')
     if sites:
         lines.append('')
         lines.append('**Sites Owned:**')
@@ -86,12 +105,17 @@ def detail(coterie_id: int):
         member_xp=member_xp,
         member_clan=member_clan,
         available_chars=available_chars,
-        pending_spends=len(pending_spends),
+        pending_spends=pending_spends,
         spend_history=spend_history,
         coterie_max=COTERIE_MAX_MEMBERS,
         sites=sites,
         sites_entitled=sites_entitled,
         discord_export=discord_export,
+        merits=merits,
+        flaws=flaws,
+        creation_budget=creation_budget,
+        pending_merits=pending_merits,
+        approved_merits=approved_merits,
     )
 
 
@@ -100,17 +124,40 @@ def detail(coterie_id: int):
 def create():
     name = request.form.get('name', '').strip()
     description = request.form.get('description', '').strip()
+    founding_members = request.form.getlist('founding_members')
+
     if not name:
         flash('Coterie name is required.', 'danger')
         return redirect(url_for('coteries.list_coteries'))
+
+    if len(founding_members) < 3:
+        flash('A coterie requires at least 3 founding members.', 'danger')
+        return redirect(url_for('coteries.list_coteries'))
+
     try:
         coterie = db_service.create_coterie(name=name, description=description,
                                             staff_user=get_staff_user())
-        flash(f'Coterie "{name}" created.', 'success')
-        return redirect(url_for('coteries.detail', coterie_id=coterie.coterie_id))
     except ValueError as exc:
         flash(str(exc), 'danger')
         return redirect(url_for('coteries.list_coteries'))
+
+    added, errors = [], []
+    for member in founding_members:
+        try:
+            db_service.add_coterie_member(coterie.coterie_id, member, get_staff_user())
+            added.append(member)
+        except ValueError as exc:
+            errors.append(str(exc))
+
+    if errors:
+        flash(
+            f'Coterie "{name}" created with {len(added)} member(s). '
+            f'Errors: {"; ".join(errors)}',
+            'warning',
+        )
+    else:
+        flash(f'Coterie "{name}" created with {len(added)} founding members.', 'success')
+    return redirect(url_for('coteries.detail', coterie_id=coterie.coterie_id))
 
 
 @bp.route('/<int:coterie_id>/add-member', methods=['POST'])
@@ -297,6 +344,104 @@ def unarchive(coterie_id: int):
     try:
         db_service.unarchive_coterie(coterie_id, get_staff_user())
         flash('Coterie unarchived.', 'success')
+    except ValueError as exc:
+        flash(str(exc), 'danger')
+    return redirect(url_for('coteries.detail', coterie_id=coterie_id))
+
+
+@bp.route('/<int:coterie_id>/merits/submit', methods=['POST'])
+@require_staff
+def submit_merit(coterie_id: int):
+    character_name = request.form.get('character_name', '').strip()
+    merit_name = request.form.get('merit_name', '').strip()
+    dots_raw = request.form.get('dots', '').strip()
+    merit_type = request.form.get('merit_type', 'purchased').strip()
+    justification = request.form.get('justification', '').strip()
+
+    if not character_name or not merit_name or not dots_raw:
+        flash('Character, merit name, and dots are required.', 'danger')
+        return redirect(url_for('coteries.detail', coterie_id=coterie_id))
+    try:
+        dots = int(dots_raw)
+    except ValueError:
+        flash('Dots must be a whole number.', 'danger')
+        return redirect(url_for('coteries.detail', coterie_id=coterie_id))
+
+    try:
+        merit = db_service.submit_coterie_merit(
+            coterie_id=coterie_id,
+            character_name=character_name,
+            merit_name=merit_name,
+            dots=dots,
+            merit_type=merit_type,
+            justification=justification,
+        )
+        if merit.status == 'Approved':
+            flash(f'{character_name}: {merit_name} ×{dots} recorded.', 'success')
+        else:
+            flash(
+                f'Merit request submitted: {merit_name} ×{dots} for {character_name}. '
+                f'Awaiting staff approval.',
+                'success',
+            )
+    except ValueError as exc:
+        flash(str(exc), 'danger')
+    return redirect(url_for('coteries.detail', coterie_id=coterie_id))
+
+
+@bp.route('/<int:coterie_id>/merits/<int:merit_id>/approve', methods=['POST'])
+@require_staff
+def approve_merit(coterie_id: int, merit_id: int):
+    notes = request.form.get('notes', '').strip()
+    try:
+        db_service.approve_coterie_merit(merit_id, get_staff_user(), notes)
+        flash('Merit approved.', 'success')
+    except ValueError as exc:
+        flash(str(exc), 'danger')
+    return redirect(url_for('coteries.detail', coterie_id=coterie_id))
+
+
+@bp.route('/<int:coterie_id>/merits/<int:merit_id>/deny', methods=['POST'])
+@require_staff
+def deny_merit(coterie_id: int, merit_id: int):
+    notes = request.form.get('notes', '').strip()
+    try:
+        db_service.deny_coterie_merit(merit_id, get_staff_user(), notes)
+        flash('Merit denied.', 'success')
+    except ValueError as exc:
+        flash(str(exc), 'danger')
+    return redirect(url_for('coteries.detail', coterie_id=coterie_id))
+
+
+@bp.route('/<int:coterie_id>/flaws/add', methods=['POST'])
+@require_staff
+def add_flaw(coterie_id: int):
+    flaw_name = request.form.get('flaw_name', '').strip()
+    dots_raw = request.form.get('dots_granted', '').strip()
+
+    if not flaw_name or not dots_raw:
+        flash('Flaw name and dots are required.', 'danger')
+        return redirect(url_for('coteries.detail', coterie_id=coterie_id))
+    try:
+        dots = int(dots_raw)
+    except ValueError:
+        flash('Dots must be a whole number.', 'danger')
+        return redirect(url_for('coteries.detail', coterie_id=coterie_id))
+
+    try:
+        flaw = db_service.add_coterie_flaw(coterie_id, flaw_name, dots, get_staff_user())
+        flash(f'Flaw "{flaw_name}" added (+{flaw.dots_granted} creation dots).', 'success')
+    except ValueError as exc:
+        flash(str(exc), 'danger')
+    return redirect(url_for('coteries.detail', coterie_id=coterie_id))
+
+
+@bp.route('/<int:coterie_id>/flaws/<int:flaw_id>/remove', methods=['POST'])
+@require_staff
+def remove_flaw(coterie_id: int, flaw_id: int):
+    try:
+        db_service.remove_coterie_flaw(flaw_id, get_staff_user())
+        flash('Flaw removed.', 'success')
     except ValueError as exc:
         flash(str(exc), 'danger')
     return redirect(url_for('coteries.detail', coterie_id=coterie_id))
