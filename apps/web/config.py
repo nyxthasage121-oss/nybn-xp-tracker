@@ -38,6 +38,15 @@ class Config:
         uid.strip() for uid in _allowed_ids.split(',') if uid.strip()
     )
 
+    # Subset of ALLOWED_DISCORD_IDS with Moderator (admin-level) access.
+    # Moderators can access config pages (chronicle settings, criteria, period
+    # import/generate). All staff can approve claims, spends, and manage characters.
+    # If left empty, all staff are treated as Moderators (backward-compatible default).
+    _moderator_ids = os.environ.get('MODERATOR_DISCORD_IDS', '')
+    MODERATOR_DISCORD_IDS = set(
+        uid.strip() for uid in _moderator_ids.split(',') if uid.strip()
+    )
+
     # Cache TTL in seconds for Google Sheets reads
     SHEETS_CACHE_TTL = int(os.environ.get('SHEETS_CACHE_TTL', '30'))
     SHEETS_VALIDATE_HEADERS_ON_STARTUP = os.environ.get(

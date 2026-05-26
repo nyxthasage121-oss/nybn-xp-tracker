@@ -2,20 +2,20 @@
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from app import db_service
-from app.auth import require_staff
+from app.auth import require_moderator
 
 bp = Blueprint('criteria', __name__)
 
 
 @bp.route('/')
-@require_staff
+@require_moderator
 def list_criteria():
     criteria = db_service.get_all_criteria()
     return render_template('criteria/list.html', criteria=criteria)
 
 
 @bp.route('/add', methods=['POST'])
-@require_staff
+@require_moderator
 def add_criterion():
     label = request.form.get('label', '').strip()
     description = request.form.get('description', '').strip()
@@ -58,7 +58,7 @@ def add_criterion():
 
 
 @bp.route('/<int:criterion_id>/edit', methods=['POST'])
-@require_staff
+@require_moderator
 def edit_criterion(criterion_id: int):
     label = request.form.get('label', '').strip()
     description = request.form.get('description', '').strip()
@@ -101,14 +101,14 @@ def edit_criterion(criterion_id: int):
 
 
 @bp.route('/<int:criterion_id>/toggle', methods=['POST'])
-@require_staff
+@require_moderator
 def toggle_criterion(criterion_id: int):
     db_service.toggle_criterion(criterion_id)
     return redirect(url_for('criteria.list_criteria'))
 
 
 @bp.route('/<int:criterion_id>/delete', methods=['POST'])
-@require_staff
+@require_moderator
 def delete_criterion(criterion_id: int):
     db_service.remove_criterion(criterion_id)
     flash('Criterion removed.', 'success')

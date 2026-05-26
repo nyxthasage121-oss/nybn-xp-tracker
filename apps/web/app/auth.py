@@ -1,8 +1,11 @@
 """Authentication via Discord OAuth2.
 
-Two-tier auth system:
-- Staff: Discord users whose IDs are in the ALLOWED_DISCORD_IDS config
-- Players: Any authenticated Discord user (access limited to own characters)
+Three-tier auth system:
+- Moderators: Staff IDs listed in MODERATOR_DISCORD_IDS — full access including config
+- Storytellers: Staff IDs in ALLOWED_DISCORD_IDS but not MODERATOR_DISCORD_IDS — claims/spends/characters
+- Players: Any authenticated Discord user — access limited to own characters
+
+If MODERATOR_DISCORD_IDS is empty, all staff are treated as Moderators (backward-compatible).
 """
 
 from functools import wraps
@@ -46,6 +49,24 @@ def require_staff(f):
         if not session.get('authenticated'):
             flash('Please log in to access this page.', 'warning')
             return redirect(url_for('dashboard.login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+def require_moderator(f):
+    """Decorator for routes that require Moderator (admin-level) access.
+
+    Moderators are staff whose Discord ID appears in MODERATOR_DISCORD_IDS.
+    If that config is empty, all staff qualify (backward-compatible).
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('authenticated'):
+            flash('Please log in to access this page.', 'warning')
+            return redirect(url_for('dashboard.login'))
+        if not is_moderator():
+            flash('This page requires Moderator access.', 'danger')
+            return redirect(url_for('dashboard.index'))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -107,6 +128,23 @@ def is_staff() -> bool:
         return True
     discord_id = session.get('discord_id', '')
     return bool(discord_id) and is_allowed_discord_user(discord_id)
+
+
+def is_moderator() -> bool:
+    """Check if the current session user has Moderator (admin-level) access.
+
+    Returns True if:
+    - They are staff AND their Discord ID is in MODERATOR_DISCORD_IDS, OR
+    - MODERATOR_DISCORD_IDS is empty (backward-compatible: all staff = moderators)
+    """
+    if not is_staff():
+        return False
+    moderator_ids = current_app.config.get('MODERATOR_DISCORD_IDS', set())
+    # Empty set means no restriction configured — all staff are moderators
+    if not moderator_ids:
+        return True
+    discord_id = session.get('discord_id', '')
+    return bool(discord_id) and str(discord_id) in moderator_ids
 
 
 def is_logged_in() -> bool:

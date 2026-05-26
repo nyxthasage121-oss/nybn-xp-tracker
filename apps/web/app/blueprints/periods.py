@@ -4,7 +4,7 @@ from flask import (
     Blueprint, render_template, request, redirect, url_for, flash
 )
 from app import db_service, sheets_sync
-from app.auth import require_staff, get_staff_user
+from app.auth import require_staff, require_moderator, get_staff_user
 from app.models import PlayPeriod, ChronicleSettings
 
 bp = Blueprint('periods', __name__)
@@ -88,7 +88,7 @@ def add():
 
 
 @bp.route('/import', methods=['GET', 'POST'])
-@require_staff
+@require_moderator
 def import_periods():
     """Import play periods from a master XP spreadsheet."""
     if request.method == 'GET':
@@ -186,7 +186,7 @@ def toggle_active(label):
 
 
 @bp.route('/settings', methods=['GET', 'POST'])
-@require_staff
+@require_moderator
 def settings():
     """View/edit chronicle schedule settings."""
     current = db_service.get_chronicle_settings()
@@ -225,7 +225,7 @@ def settings():
 
 
 @bp.route('/generate', methods=['POST'])
-@require_staff
+@require_moderator
 def generate():
     """Auto-generate upcoming nights based on chronicle settings."""
     try:
