@@ -29,12 +29,16 @@
       {% for site in borough_sites %}
       <div class="col">
         <div class="card h-100 site-card">
-          <div class="card-header d-flex justify-content-between align-items-start gap-2">
+          <div class="card-header d-flex justify-content-between align-items-center gap-2">
             <span class="fw-semibold">{{ site.name }}</span>
             {% if site.coterie_id %}
-            <span class="badge site-badge-owned text-wrap text-end" style="max-width:50%">{{ site.coterie_name }}</span>
+            <span class="site-owner-label">
+              <span class="site-owner-pip"></span>{{ site.coterie_name }}
+            </span>
             {% else %}
-            <span class="badge site-badge-unowned">Unowned</span>
+            <span class="site-owner-label site-owner-vacant">
+              <span class="site-owner-pip site-owner-pip-vacant"></span>Unclaimed
+            </span>
             {% endif %}
           </div>
           <div class="card-body">
