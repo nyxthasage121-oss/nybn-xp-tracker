@@ -35,12 +35,12 @@
         <thead>
             <tr>
                 <th>Type</th>
-                <th>Night</th>
+                <th class="d-none d-sm-table-cell">Night</th>
                 <th>Period</th>
-                <th>Start</th>
-                <th>End</th>
+                <th class="d-none d-md-table-cell">Start</th>
+                <th class="d-none d-md-table-cell">End</th>
                 <th>Submissions</th>
-                <th>In Dropdowns</th>
+                <th class="d-none d-md-table-cell">In Dropdowns</th>
                 <th>Actions</th>
             </tr>
         </thead>
@@ -58,10 +58,10 @@
                     <span class="badge bg-secondary">{{ p.period_type }}</span>
                     {% endif %}
                 </td>
-                <td>{{ p.night_number if p.night_number else '—' }}</td>
+                <td class="d-none d-sm-table-cell">{{ p.night_number if p.night_number else '—' }}</td>
                 <td>{{ p.period_label }}</td>
-                <td>{{ p.start_date }}</td>
-                <td>{{ p.end_date }}</td>
+                <td class="d-none d-md-table-cell">{{ p.start_date }}</td>
+                <td class="d-none d-md-table-cell">{{ p.end_date }}</td>
                 <td>
                     {% if p.period_type == 'night' %}
                         {% if p.submissions_open %}
@@ -73,7 +73,7 @@
                     <span class="text-muted small">—</span>
                     {% endif %}
                 </td>
-                <td>
+                <td class="d-none d-md-table-cell">
                     {% if p.active %}
                     <span class="badge bg-success">Shown</span>
                     {% else %}

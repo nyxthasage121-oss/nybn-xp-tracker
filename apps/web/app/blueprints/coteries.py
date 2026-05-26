@@ -20,9 +20,11 @@ def list_coteries():
         [c for c in active_chars if c.character_name.lower() not in taken],
         key=lambda c: c.character_name,
     )
+    pending_requests = db_service.get_coterie_requests(status='Pending')
     return render_template('coteries/list.html', coteries=coteries,
                            coterie_max=COTERIE_MAX_MEMBERS,
-                           available_chars=available_chars)
+                           available_chars=available_chars,
+                           pending_requests=pending_requests)
 
 
 @bp.route('/<int:coterie_id>')
@@ -462,6 +464,41 @@ def remove_flaw(coterie_id: int, flaw_id: int):
     except ValueError as exc:
         flash(str(exc), 'danger')
     return redirect(url_for('coteries.detail', coterie_id=coterie_id))
+
+
+@bp.route('/<int:coterie_id>/delete', methods=['POST'])
+@require_staff
+def delete(coterie_id: int):
+    try:
+        db_service.delete_coterie(coterie_id, get_staff_user())
+        flash('Coterie permanently deleted.', 'success')
+    except ValueError as exc:
+        flash(str(exc), 'danger')
+    return redirect(url_for('coteries.list_coteries'))
+
+
+@bp.route('/requests/<int:request_id>/acknowledge', methods=['POST'])
+@require_staff
+def acknowledge_request(request_id: int):
+    notes = request.form.get('notes', '').strip()
+    try:
+        db_service.acknowledge_coterie_request(request_id, get_staff_user(), notes)
+        flash('Coterie request acknowledged — use the New Coterie form to create it.', 'success')
+    except ValueError as exc:
+        flash(str(exc), 'danger')
+    return redirect(url_for('coteries.list_coteries'))
+
+
+@bp.route('/requests/<int:request_id>/deny', methods=['POST'])
+@require_staff
+def deny_request(request_id: int):
+    notes = request.form.get('notes', '').strip()
+    try:
+        db_service.deny_coterie_request(request_id, get_staff_user(), notes)
+        flash('Coterie formation request denied.', 'success')
+    except ValueError as exc:
+        flash(str(exc), 'danger')
+    return redirect(url_for('coteries.list_coteries'))
 
 
 @bp.route('/<int:coterie_id>/update-ratings', methods=['POST'])

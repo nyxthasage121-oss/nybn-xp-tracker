@@ -215,6 +215,22 @@ class CoterieFlaw:
 
 
 @dataclass
+class CoterieRequest:
+    request_id: int = 0
+    name: str = ''
+    notes: str = ''
+    submitted_by: str = ''
+    submitted_by_discord_id: str = ''
+    has_enough_members: bool = False
+    members_have_met: bool = False
+    status: str = 'Pending'   # Pending / Acknowledged / Denied
+    st_notes: str = ''
+    reviewed_by: str = ''
+    review_date: str = ''
+    timestamp: str = ''
+
+
+@dataclass
 class HuntingSite:
     site_id: int = 0
     name: str = ''

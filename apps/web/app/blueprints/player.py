@@ -263,6 +263,87 @@ def submit_claim(name):
     return redirect(url_for('player.character', name=name))
 
 
+_BOROUGH_ORDER = ['Manhattan', 'Brooklyn', 'Queens', 'The Bronx', 'Staten Island']
+
+
+@bp.route('/coteries')
+@require_login
+def coteries():
+    """Read-only coterie list + formation request form for players."""
+    from app.db import COTERIE_MAX_MEMBERS
+    all_coteries = db_service.get_all_coteries()
+    active_coteries = [c for c in all_coteries if c.active]
+    inactive_coteries = [c for c in all_coteries if not c.active]
+
+    discord_id = get_player_discord_id()
+    # Show this player's own requests
+    all_requests = db_service.get_coterie_requests()
+    my_requests = [r for r in all_requests if r.submitted_by_discord_id == discord_id]
+
+    return render_template(
+        'player/coteries.html',
+        active_coteries=active_coteries,
+        inactive_coteries=inactive_coteries,
+        my_requests=my_requests,
+        coterie_max=COTERIE_MAX_MEMBERS,
+    )
+
+
+@bp.route('/coteries/request', methods=['POST'])
+@require_login
+def submit_coterie_request():
+    """Player submits a coterie formation request."""
+    discord_id = get_player_discord_id()
+    discord_name = session.get('discord_name', 'unknown')
+
+    name = request.form.get('name', '').strip()
+    notes = request.form.get('notes', '').strip()
+    has_enough_members = bool(request.form.get('has_enough_members'))
+    members_have_met = bool(request.form.get('members_have_met'))
+
+    if not name:
+        flash('Coterie name is required.', 'danger')
+        return redirect(url_for('player.coteries'))
+
+    if not has_enough_members or not members_have_met:
+        flash('Please confirm both requirements before submitting.', 'danger')
+        return redirect(url_for('player.coteries'))
+
+    try:
+        db_service.submit_coterie_request(
+            name=name,
+            notes=notes,
+            has_enough_members=has_enough_members,
+            members_have_met=members_have_met,
+            submitted_by=discord_name,
+            submitted_by_discord_id=discord_id,
+        )
+        flash(
+            f'Coterie formation request for "{name}" sent to staff.',
+            'success',
+        )
+    except ValueError as exc:
+        flash(str(exc), 'danger')
+    return redirect(url_for('player.coteries'))
+
+
+@bp.route('/sites')
+@require_login
+def sites():
+    """Read-only hunting sites view for players."""
+    all_sites = db_service.get_all_sites()
+
+    by_borough: dict[str, list] = {b: [] for b in _BOROUGH_ORDER}
+    for site in all_sites:
+        by_borough.setdefault(site.borough, []).append(site)
+
+    return render_template(
+        'player/sites.html',
+        by_borough=by_borough,
+        borough_order=_BOROUGH_ORDER,
+    )
+
+
 @bp.route('/<name>/spend', methods=['POST'])
 @require_character_owner
 def submit_spend(name):

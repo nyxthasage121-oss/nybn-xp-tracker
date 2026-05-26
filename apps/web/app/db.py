@@ -260,6 +260,23 @@ class DbCoterieFlaw(db.Model):
     added_at = db.Column(String(20), default='')
 
 
+class DbCoterieRequest(db.Model):
+    """Player-submitted alert that they want a coterie formed."""
+    __tablename__ = 'coterie_requests'
+    id = db.Column(Integer, primary_key=True)
+    name = db.Column(String(200), nullable=False)           # desired coterie name
+    notes = db.Column(Text, default='')                     # optional player message
+    submitted_by = db.Column(String(200), default='')       # discord display name
+    submitted_by_discord_id = db.Column(String(100), default='', index=True)
+    has_enough_members = db.Column(Boolean, default=False)  # confirmed 3+ members
+    members_have_met = db.Column(Boolean, default=False)    # confirmed all met IC
+    status = db.Column(String(20), default='Pending', index=True)  # Pending / Acknowledged / Denied
+    st_notes = db.Column(Text, default='')
+    reviewed_by = db.Column(String(100), default='')
+    review_date = db.Column(String(20), default='')
+    timestamp = db.Column(String(20), default='')
+
+
 class DbHuntingSite(db.Model):
     """A NYC hunting location with predator-type DCs, a site bonus, and optional coterie ownership."""
     __tablename__ = 'hunting_sites'

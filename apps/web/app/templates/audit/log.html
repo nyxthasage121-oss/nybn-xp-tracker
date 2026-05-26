@@ -46,18 +46,18 @@
     <table class="table table-hover">
         <thead>
             <tr>
-                <th data-sort="text">Timestamp</th>
-                <th data-sort="text">Staff</th>
+                <th data-sort="text" class="d-none d-sm-table-cell">Timestamp</th>
+                <th data-sort="text" class="d-none d-md-table-cell">Staff</th>
                 <th data-sort="text">Action</th>
                 <th data-sort="text">Character</th>
-                <th>Details</th>
+                <th class="d-none d-md-table-cell">Details</th>
             </tr>
         </thead>
         <tbody>
             {% for entry in entries %}
             <tr>
-                <td class="text-nowrap">{{ entry.timestamp }}</td>
-                <td>{{ entry.staff_user }}</td>
+                <td class="text-nowrap d-none d-sm-table-cell">{{ entry.timestamp }}</td>
+                <td class="d-none d-md-table-cell">{{ entry.staff_user }}</td>
                 <td>
                     <span class="badge
                         {% if 'approve' in entry.action_type %}bg-success
@@ -75,7 +75,7 @@
                     </a>
                     {% endif %}
                 </td>
-                <td>{{ entry.details }}</td>
+                <td class="d-none d-md-table-cell">{{ entry.details }}</td>
             </tr>
             {% endfor %}
         </tbody>

@@ -1,0 +1,87 @@
+{% extends "player/base.html" %}
+
+{% block title %}Hunting Sites — NYbN Player{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+  <h1 class="mb-0">Hunting Sites</h1>
+  <span class="text-muted small">If your Predator Type is not listed at a site, the DC is 6.</span>
+</div>
+
+{% set borough_class = {
+  'Manhattan':     'borough-manhattan',
+  'Brooklyn':      'borough-brooklyn',
+  'Queens':        'borough-queens',
+  'The Bronx':     'borough-bronx',
+  'Staten Island': 'borough-staten'
+} %}
+
+{% for borough in borough_order %}
+{% set borough_sites = by_borough.get(borough, []) %}
+{% if borough_sites %}
+<div class="mt-4 mb-4 {{ borough_class.get(borough, '') }}">
+  <div class="borough-header mb-3">
+    <span class="borough-pip"></span>
+    <span class="borough-title"><i class="bi bi-geo-alt-fill me-1"></i>{{ borough }}</span>
+    <div class="borough-rule"></div>
+  </div>
+  <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3">
+    {% for site in borough_sites %}
+    <div class="col">
+      <div class="card h-100 site-card">
+        <div class="card-header d-flex justify-content-between align-items-center gap-2">
+          <span class="fw-semibold">{{ site.name }}</span>
+          {% if site.coterie_id %}
+          <span class="site-owner-label">
+            <span class="site-owner-pip"></span>{{ site.coterie_name }}
+          </span>
+          {% else %}
+          <span class="site-owner-label site-owner-vacant">
+            <span class="site-owner-pip site-owner-pip-vacant"></span>Unclaimed
+          </span>
+          {% endif %}
+        </div>
+        <div class="card-body">
+          <!-- Predator types / DCs -->
+          <div class="mb-2">
+            {% for pt in site.predator_types %}
+            <span class="site-dc-badge {% if pt.dc == 2 %}site-dc-easy{% elif pt.dc == 3 %}site-dc-mid{% else %}site-dc-hard{% endif %} me-1">
+              {{ pt.type }} <span class="site-dc-num">DC {{ pt.dc }}</span>
+            </span>
+            {% endfor %}
+          </div>
+          <!-- Site bonus -->
+          {% if site.bonus %}
+          <p class="text-muted small mb-0">{{ site.bonus }}</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+{% endfor %}
+
+<!-- Chasse reference table -->
+<div class="card mt-5 mb-4 border-secondary">
+  <div class="card-header fw-semibold">Chasse &amp; Site Entitlement</div>
+  <div class="card-body p-0">
+    <table class="table table-dark table-sm mb-0">
+      <thead>
+        <tr>
+          <th>Chasse Rating</th>
+          <th>Sites Controlled</th>
+          <th>Hunting DC (coterie channel)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>0 – 1</td><td>0 sites</td><td>Chasse 1 → DC 5</td></tr>
+        <tr><td>2 – 3</td><td>1 site</td><td>Chasse 2 → DC 4 / Chasse 3 → DC 3</td></tr>
+        <tr><td>4</td><td>2 sites</td><td>Chasse 4 → DC 2</td></tr>
+        <tr><td>5</td><td>3 sites</td><td>Chasse 5 → DC 1</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

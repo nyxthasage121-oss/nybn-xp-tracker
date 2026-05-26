@@ -1,0 +1,171 @@
+{% extends "player/base.html" %}
+
+{% block title %}Coteries — NYbN Player{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+  <h1 class="mb-0">Coteries</h1>
+  <button class="btn btn-danger" data-bs-toggle="collapse" data-bs-target="#request-form">
+    <i class="bi bi-plus-lg"></i> Request New Coterie
+  </button>
+</div>
+
+<!-- ── Formation Request Form ── -->
+<div class="collapse mb-4" id="request-form">
+  <div class="card border-secondary">
+    <div class="card-header fw-semibold">Request Coterie Formation</div>
+    <div class="card-body">
+      <form method="POST" action="{{ url_for('player.submit_coterie_request') }}" id="req-form">
+        <div class="mb-3">
+          <label class="form-label fw-semibold">
+            Desired Coterie Name <span class="text-danger">*</span>
+          </label>
+          <input type="text" name="name" class="form-control" required maxlength="200"
+                 placeholder="e.g., The Primogen Council">
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Message to Staff</label>
+          <textarea name="notes" class="form-control" rows="2"
+                    placeholder="Anything you'd like staff to know (optional)"></textarea>
+        </div>
+
+        <div class="mb-3">
+          <div class="form-check mb-2">
+            <input class="form-check-input req-check" type="checkbox"
+                   name="has_enough_members" id="chk-members" value="1">
+            <label class="form-check-label" for="chk-members">
+              We have at least 3 members (including myself) ready to join
+            </label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input req-check" type="checkbox"
+                   name="members_have_met" id="chk-met" value="1">
+            <label class="form-check-label" for="chk-met">
+              All members have met each other in character
+            </label>
+          </div>
+        </div>
+
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-danger" id="req-submit" disabled>
+            Send Request
+          </button>
+          <button type="button" class="btn btn-outline-secondary"
+                  data-bs-toggle="collapse" data-bs-target="#request-form">
+            Cancel
+          </button>
+        </div>
+      </form>
+      <script>
+      (function () {
+        var checks = document.querySelectorAll('.req-check');
+        var btn = document.getElementById('req-submit');
+        function update() {
+          btn.disabled = !document.getElementById('chk-members').checked
+                      || !document.getElementById('chk-met').checked;
+        }
+        checks.forEach(function (c) { c.addEventListener('change', update); });
+      })();
+      </script>
+    </div>
+  </div>
+</div>
+
+<!-- ── My Requests ── -->
+{% if my_requests %}
+<div class="mb-4">
+  <h5 class="mb-3"><i class="bi bi-send me-1"></i> My Requests</h5>
+  {% for req in my_requests %}
+  <div class="card mb-2 border-secondary">
+    <div class="card-body py-2 d-flex justify-content-between align-items-start flex-wrap gap-2">
+      <div>
+        <span class="fw-semibold">{{ req.name }}</span>
+        {% if req.notes %}
+        <p class="text-muted small mb-0 mt-1">{{ req.notes }}</p>
+        {% endif %}
+      </div>
+      <div class="text-end flex-shrink-0">
+        {% if req.status == 'Acknowledged' %}
+        <span class="badge bg-success">Acknowledged</span>
+        {% elif req.status == 'Denied' %}
+        <span class="badge bg-danger">Denied</span>
+        {% if req.st_notes %}
+        <div class="text-muted small mt-1">{{ req.st_notes }}</div>
+        {% endif %}
+        {% else %}
+        <span class="badge bg-warning">Pending</span>
+        {% endif %}
+        <div class="text-muted mt-1" style="font-size:0.7rem">{{ req.timestamp }}</div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- ── Active Coteries ── -->
+{% if active_coteries %}
+<h5 class="mb-3"><i class="bi bi-people me-1"></i> Active Coteries</h5>
+<div class="card mb-4">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-dark table-striped table-hover mb-0 align-middle">
+        <thead>
+          <tr>
+            <th class="ps-3">Name</th>
+            <th class="d-none d-sm-table-cell">Description</th>
+            <th class="text-center d-none d-sm-table-cell">Members</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in active_coteries | sort(attribute='name') %}
+          <tr>
+            <td class="ps-3 fw-semibold">{{ c.name }}</td>
+            <td class="text-muted small d-none d-sm-table-cell">{{ c.description or '—' }}</td>
+            <td class="text-center d-none d-sm-table-cell">
+              <span class="badge {% if c.members | length >= coterie_max %}bg-warning{% else %}bg-secondary{% endif %}">
+                {{ c.members | length }}/{{ coterie_max }}
+              </span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- ── Inactive / Archived Coteries ── -->
+{% if inactive_coteries %}
+<div class="card mb-4 border-secondary">
+  <div class="card-header d-flex justify-content-between align-items-center"
+       style="cursor:pointer" data-bs-toggle="collapse" data-bs-target="#inactive-coteries">
+    <span class="fw-semibold text-muted">
+      <i class="bi bi-archive me-1"></i> Archived Coteries
+    </span>
+    <i class="bi bi-chevron-down"></i>
+  </div>
+  <div class="collapse" id="inactive-coteries">
+    <div class="card-body p-0">
+      <table class="table table-dark table-sm mb-0 align-middle">
+        <tbody>
+          {% for c in inactive_coteries | sort(attribute='name') %}
+          <tr>
+            <td class="ps-3 text-muted fw-semibold">{{ c.name }}</td>
+            <td class="text-muted small d-none d-sm-table-cell">{{ c.description or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if not active_coteries and not inactive_coteries %}
+<div class="card">
+  <div class="card-body text-muted">No coteries have been formed yet.</div>
+</div>
+{% endif %}
+{% endblock %}

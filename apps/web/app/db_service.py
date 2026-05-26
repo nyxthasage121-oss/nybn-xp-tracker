@@ -18,14 +18,14 @@ from app.db import (
     DbCharacter, DbPlayPeriod, DbCriteria,
     DbXPClaim, DbSpendRequest, DbLedgerEntry, DbAuditLog,
     DbCoterie, DbCoterieMembership, DbCoterieSpend, DbHuntingSite,
-    DbCoterieMerit, DbCoterieFlaw,
+    DbCoterieMerit, DbCoterieFlaw, DbCoterieRequest,
     DbChronicleSettings, DbPlayerProfile,
 )
 from app.models import (
     Character, PlayPeriod, Criteria, XPClaim,
     SpendRequest, LedgerEntry, AuditEntry,
     Coterie, CoterieSpend, HuntingSite,
-    CoterieMerit, CoterieFlaw,
+    CoterieMerit, CoterieFlaw, CoterieRequest,
     ChronicleSettings, PlayerProfile,
     NYBN_SEED_CRITERIA, NYBN_SEED_SITES,
 )
@@ -1706,6 +1706,105 @@ class DBService:
         row.active = True
         db.session.commit()
         self.log_action(staff_user, 'unarchive_coterie', row.name, 'Coterie unarchived.')
+
+    def delete_coterie(self, coterie_id: int, staff_user: str) -> None:
+        """Permanently delete a coterie and all its related records."""
+        row = DbCoterie.query.get(coterie_id)
+        if not row:
+            raise ValueError(f'Coterie {coterie_id} not found.')
+        name = row.name
+        # Unassign any hunting sites owned by this coterie
+        for site in DbHuntingSite.query.filter_by(coterie_id=coterie_id).all():
+            site.coterie_id = None
+        # Remove child records
+        DbCoterieMembership.query.filter_by(coterie_id=coterie_id).delete()
+        DbCoterieSpend.query.filter_by(coterie_id=coterie_id).delete()
+        DbCoterieMerit.query.filter_by(coterie_id=coterie_id).delete()
+        DbCoterieFlaw.query.filter_by(coterie_id=coterie_id).delete()
+        db.session.delete(row)
+        db.session.commit()
+        self.log_action(staff_user, 'delete_coterie', name, 'Coterie permanently deleted.')
+
+    # ── Coterie Formation Requests ────────────────────────────────────────────
+
+    @staticmethod
+    def _row_to_coterie_request(row: DbCoterieRequest) -> CoterieRequest:
+        return CoterieRequest(
+            request_id=row.id,
+            name=row.name or '',
+            notes=row.notes or '',
+            submitted_by=row.submitted_by or '',
+            submitted_by_discord_id=row.submitted_by_discord_id or '',
+            has_enough_members=bool(row.has_enough_members),
+            members_have_met=bool(row.members_have_met),
+            status=row.status or 'Pending',
+            st_notes=row.st_notes or '',
+            reviewed_by=row.reviewed_by or '',
+            review_date=row.review_date or '',
+            timestamp=row.timestamp or '',
+        )
+
+    def submit_coterie_request(self, name: str, notes: str,
+                               has_enough_members: bool,
+                               members_have_met: bool,
+                               submitted_by: str,
+                               submitted_by_discord_id: str) -> CoterieRequest:
+        if not name:
+            raise ValueError('Coterie name is required.')
+        row = DbCoterieRequest(
+            name=name.strip(),
+            notes=notes.strip(),
+            has_enough_members=has_enough_members,
+            members_have_met=members_have_met,
+            submitted_by=submitted_by,
+            submitted_by_discord_id=submitted_by_discord_id,
+            status='Pending',
+            timestamp=_now_str(),
+        )
+        db.session.add(row)
+        db.session.commit()
+        self.log_action(
+            submitted_by, 'submit_coterie_request', name,
+            f'Player requested coterie formation: "{name}".',
+        )
+        return self._row_to_coterie_request(row)
+
+    def get_coterie_requests(self, status: str | None = None) -> list[CoterieRequest]:
+        q = DbCoterieRequest.query.order_by(DbCoterieRequest.id.desc())
+        if status:
+            q = q.filter_by(status=status)
+        return [self._row_to_coterie_request(r) for r in q.all()]
+
+    def acknowledge_coterie_request(self, request_id: int, staff_user: str,
+                                    notes: str = '') -> None:
+        """Mark a coterie request as acknowledged (staff creates the coterie manually)."""
+        req_row = DbCoterieRequest.query.get(request_id)
+        if not req_row:
+            raise ValueError(f'Request {request_id} not found.')
+        if req_row.status != 'Pending':
+            raise ValueError(f'Request is already {req_row.status}.')
+        req_row.status = 'Acknowledged'
+        req_row.reviewed_by = staff_user
+        req_row.review_date = _now_str()
+        req_row.st_notes = notes
+        db.session.commit()
+        self.log_action(staff_user, 'acknowledge_coterie_request', req_row.name,
+                        'Request acknowledged.')
+
+    def deny_coterie_request(self, request_id: int, staff_user: str,
+                             notes: str = '') -> None:
+        req_row = DbCoterieRequest.query.get(request_id)
+        if not req_row:
+            raise ValueError(f'Request {request_id} not found.')
+        if req_row.status != 'Pending':
+            raise ValueError(f'Request is already {req_row.status}.')
+        req_row.status = 'Denied'
+        req_row.reviewed_by = staff_user
+        req_row.review_date = _now_str()
+        req_row.st_notes = notes
+        db.session.commit()
+        self.log_action(staff_user, 'deny_coterie_request', req_row.name,
+                        f'Request denied. Notes: {notes}')
 
     # ── Coterie Merits / Advantages ───────────────────────────────────────────
 
