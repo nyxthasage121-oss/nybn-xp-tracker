@@ -1,4 +1,4 @@
-"""MCbN XP Tracker — Flask application factory."""
+"""NYbN XP Tracker — Flask application factory."""
 
 import os
 from datetime import datetime

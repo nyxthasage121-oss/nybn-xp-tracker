@@ -2,11 +2,14 @@
   "Attribute",
   "Skill",
   "New Skill",
-  "Discipline (In-Clan)",
-  "Discipline (Out-of-Clan)",
+  "Specialty",
+  "Clan Discipline",
+  "Other Discipline",
   "Caitiff Discipline",
+  "Ingrained Discipline",
   "Blood Sorcery Ritual",
   "Thin-Blood Alchemy Formula",
-  "Advantage (Merit/Background)",
-  "Loresheet"
+  "Advantage",
+  "Blood Potency",
+  "Humanity"
 ]

@@ -1,9 +1,12 @@
-"""SQLAlchemy models for MCbN XP Tracker."""
+"""SQLAlchemy models for NYbN (New York by Night) XP Tracker."""
 
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import Integer, String, Boolean, Text
 
 db = SQLAlchemy()
+
+XP_CAP = 350
+COTERIE_MAX_MEMBERS = 6  # NYbN allows 6; MCbN allows 5
 
 
 class DbCharacter(db.Model):
@@ -21,6 +24,18 @@ class DbCharacter(db.Model):
     date_added = db.Column(String(20), default='')
     notes = db.Column(Text, default='')
 
+    # XP cap tracking (NYbN cap: 350)
+    xp_cap_reached = db.Column(Boolean, default=False, index=True)
+    xp_cap_reached_date = db.Column(String(20), default='')   # ISO date cap was hit
+    retirement_deadline = db.Column(String(20), default='')   # cap date + 6 months
+    retired = db.Column(Boolean, default=False, index=True)
+    retired_date = db.Column(String(20), default='')
+
+    # Ingrained Discipline Flaw (up to 15 XP of extra powers, no sheet slot used)
+    ingrained_discipline_flaw = db.Column(Boolean, default=False)
+    ingrained_discipline_name = db.Column(String(50), default='')  # which Discipline
+    ingrained_discipline_xp_used = db.Column(Integer, default=0)   # running total, max 15
+
 
 class DbPlayPeriod(db.Model):
     __tablename__ = 'play_periods'
@@ -34,56 +49,85 @@ class DbPlayPeriod(db.Model):
     active = db.Column(Boolean, default=True)
 
 
+class DbCriteria(db.Model):
+    """Editable XP earn criteria. The submission form is built from this table.
+    Editing a criterion only affects future submissions — past records keep their
+    snapshotted values stored in DbXPClaim.claimed_criteria."""
+    __tablename__ = 'criteria'
+    id = db.Column(Integer, primary_key=True)
+    label = db.Column(String(200), nullable=False)
+    description = db.Column(Text, default='')
+    xp_value = db.Column(Integer, nullable=False, default=0)
+    category = db.Column(String(50), default='player')  # base / player / staff / helper
+    requires_rp_links = db.Column(Boolean, default=True)
+    requires_text_note = db.Column(Boolean, default=False)
+    active = db.Column(Boolean, default=True, index=True)
+    sort_order = db.Column(Integer, default=0)
+
+
 class DbXPClaim(db.Model):
+    """One XP earn submission per character per play period.
+
+    claimed_criteria stores a JSON snapshot of what was claimed at submission
+    time: [{criteria_id, label, xp_value_at_submission}]. This means edits to
+    the criteria table never retroactively change approved records.
+    """
     __tablename__ = 'xp_claims'
     id = db.Column(Integer, primary_key=True)
-    timestamp = db.Column(String(20), default='')
+    timestamp = db.Column(String(20), default='', index=True)
     character_name = db.Column(String(200), nullable=False, index=True)
     play_period = db.Column(String(100), default='', index=True)
-    posted_once = db.Column(Boolean, default=False)
-    posted_once_link = db.Column(Text, default='')
-    hunting_awakening = db.Column(Boolean, default=False)
-    hunting_awakening_link = db.Column(Text, default='')
-    scene_with_another = db.Column(Boolean, default=False)
-    scene_with_another_link = db.Column(Text, default='')
-    conflict = db.Column(Boolean, default=False)
-    conflict_link = db.Column(Text, default='')
-    combat = db.Column(Boolean, default=False)
-    combat_link = db.Column(Text, default='')
-    unmitigated_stain = db.Column(Boolean, default=False)
-    unmitigated_stain_link = db.Column(Text, default='')
-    wildcard = db.Column(Boolean, default=False)
-    wildcard_link = db.Column(Text, default='')
-    wildcard_reason = db.Column(Text, default='')
-    wildcard_amount = db.Column(Integer, default=0)
-    xp_claimed = db.Column(Integer, default=0)
+
+    # Criteria snapshot: JSON list of {criteria_id, label, xp_value_at_submission}
+    claimed_criteria = db.Column(Text, default='[]')
+    # RP links: JSON list of Discord message URLs
+    rp_links = db.Column(Text, default='[]')
+    # Staff/Helper path (mutually exclusive)
+    path = db.Column(String(20), default='none')   # none / staff / helper
+    helper_note = db.Column(Text, default='')       # required when path == helper
+
+    computed_xp = db.Column(Integer, default=0)    # sum of snapshotted values
     status = db.Column(String(20), default='Pending', index=True)
     approved_xp = db.Column(Integer, default=0)
     reviewed_by = db.Column(String(100), default='')
     review_date = db.Column(String(20), default='')
     st_notes = db.Column(Text, default='')
 
+    # Flagged when the same player claimed staff/helper on another character this period
+    staff_claim_conflict = db.Column(Boolean, default=False)
+
 
 class DbSpendRequest(db.Model):
+    """An individual XP spend request from a player."""
     __tablename__ = 'spend_requests'
     id = db.Column(Integer, primary_key=True)
-    timestamp = db.Column(String(20), default='')
+    timestamp = db.Column(String(20), default='', index=True)
     character_name = db.Column(String(200), nullable=False, index=True)
     spend_category = db.Column(String(100), default='')
     trait_name = db.Column(String(100), default='')
     current_dots = db.Column(Integer, default=0)
     new_dots = db.Column(Integer, default=0)
-    xp_cost = db.Column(Integer, default=0)
-    is_in_clan = db.Column(Boolean, default=False)
+    xp_cost = db.Column(Integer, default=0)         # player-submitted cost
     justification = db.Column(Text, default='')
     status = db.Column(String(20), default='Pending', index=True)
-    verified_cost = db.Column(Integer, default=0)
+    verified_cost = db.Column(Integer, default=0)   # staff-verified cost
     reviewed_by = db.Column(String(100), default='')
     review_date = db.Column(String(20), default='')
     st_notes = db.Column(Text, default='')
 
+    # Humanity conditional spend
+    is_humanity = db.Column(Boolean, default=False)
+    # Player self-certifies all 4 conditions before submitting
+    humanity_no_frenzy = db.Column(Boolean, default=False)
+    humanity_no_stains = db.Column(Boolean, default=False)
+    humanity_humane_act = db.Column(Boolean, default=False)
+
+    # Ingrained Discipline Flaw spend
+    is_ingrained_discipline = db.Column(Boolean, default=False)
+
 
 class DbLedgerEntry(db.Model):
+    """A single line in a character's XP ledger — award or spend."""
     __tablename__ = 'ledger_entries'
     id = db.Column(Integer, primary_key=True)
     character_name = db.Column(String(200), nullable=False, index=True)
@@ -103,3 +147,53 @@ class DbAuditLog(db.Model):
     action_type = db.Column(String(100), default='', index=True)
     target_character = db.Column(String(200), default='')
     details = db.Column(Text, default='')
+
+
+# ── Coterie tables ────────────────────────────────────────────────────────────
+
+class DbCoterie(db.Model):
+    """A coterie of up to COTERIE_MAX_MEMBERS characters."""
+    __tablename__ = 'coteries'
+    id = db.Column(Integer, primary_key=True)
+    name = db.Column(String(200), nullable=False, unique=True)
+    description = db.Column(Text, default='')
+    created_at = db.Column(String(20), default='')
+    created_by = db.Column(String(100), default='')  # staff Discord ID who created it
+    active = db.Column(Boolean, default=True, index=True)
+
+
+class DbCoterieMembership(db.Model):
+    """Tracks which characters belong to which coterie."""
+    __tablename__ = 'coterie_memberships'
+    id = db.Column(Integer, primary_key=True)
+    coterie_id = db.Column(Integer, db.ForeignKey('coteries.id'), nullable=False, index=True)
+    character_name = db.Column(String(200), nullable=False, index=True)
+    joined_at = db.Column(String(20), default='')
+
+    __table_args__ = (
+        db.UniqueConstraint('coterie_id', 'character_name', name='uq_coterie_member'),
+    )
+
+
+class DbCoterieSpend(db.Model):
+    """A group XP spend where coterie members each contribute XP toward a shared purchase."""
+    __tablename__ = 'coterie_spends'
+    id = db.Column(Integer, primary_key=True)
+    coterie_id = db.Column(Integer, db.ForeignKey('coteries.id'), nullable=False, index=True)
+    initiated_by = db.Column(String(200), default='')  # character name
+    spend_category = db.Column(String(100), default='')
+    trait_name = db.Column(String(100), default='')
+    xp_cost_per_member = db.Column(Integer, default=0)
+    total_xp_cost = db.Column(Integer, default=0)
+    # JSON: {character_name: xp_committed} — tracks who has committed their share
+    contributions = db.Column(Text, default='{}')
+    # Pending = waiting for member contributions
+    # Funded   = all members committed, waiting for staff approval
+    # Approved = staff approved, XP deducted from all members
+    # Denied   = staff denied
+    status = db.Column(String(20), default='Pending', index=True)
+    justification = db.Column(Text, default='')
+    reviewed_by = db.Column(String(100), default='')
+    review_date = db.Column(String(20), default='')
+    st_notes = db.Column(Text, default='')
+    timestamp = db.Column(String(20), default='')

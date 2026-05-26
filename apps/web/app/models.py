@@ -1,33 +1,59 @@
-"""Data classes for MCbN XP Tracker entities."""
+"""Data classes for NYbN XP Tracker entities."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from .shared_contract import load_json
 
 
 @dataclass
 class Character:
     character_name: str
-    player_discord: str = ''          # Numeric Discord user ID
-    player_discord_name: str = ''     # Human-readable Discord display name
+    player_discord: str = ''
+    player_discord_name: str = ''
     clan: str = ''
     age_category: str = ''  # Fledgling, Neonate, Ancilla, Elder, Mortal
     sect: str = ''           # Camarilla, Anarch, Hecata, Autarkis
     active: bool = True
-    creation_xp: int = 0    # Audit baseline XP
+    creation_xp: int = 0
     enemy: str = ''
     date_added: str = ''
     notes: str = ''
 
-    # Computed fields (not stored in Roster sheet)
+    # Computed fields
     earned_xp: int = 0
     approved_spends: int = 0
     available_xp: int = 0
     last_submission: str = ''
 
+    # XP cap (NYbN cap: 350)
+    xp_cap_reached: bool = False
+    xp_cap_reached_date: str = ''
+    retirement_deadline: str = ''
+    retired: bool = False
+    retired_date: str = ''
+
+    # Ingrained Discipline Flaw
+    ingrained_discipline_flaw: bool = False
+    ingrained_discipline_name: str = ''
+    ingrained_discipline_xp_used: int = 0
+
+
+@dataclass
+class Criteria:
+    """A single XP earn criterion. The submission form is built from active criteria."""
+    criteria_id: int = 0
+    label: str = ''
+    description: str = ''
+    xp_value: int = 0
+    category: str = 'player'   # base / player / staff / helper
+    requires_rp_links: bool = True
+    requires_text_note: bool = False
+    active: bool = True
+    sort_order: int = 0
+
 
 @dataclass
 class PlayPeriod:
-    period_label: str         # e.g., "Night 53 - 1/27 - 2/8"
+    period_label: str
     night_number: int = 0
     start_date: str = ''
     end_date: str = ''
@@ -38,76 +64,28 @@ class PlayPeriod:
 
 @dataclass
 class XPClaim:
-    row_index: int = 0       # Row number in the sheet (for updates)
+    """An XP earn submission.
+
+    claimed_criteria is a list of dicts: [{criteria_id, label, xp_value_at_submission}].
+    Values are snapshotted at submission time so future criteria edits don't change history.
+    """
+    row_index: int = 0
     timestamp: str = ''
     character_name: str = ''
     play_period: str = ''
 
-    # Six XP categories - each has a checkbox and link
-    posted_once: bool = False
-    posted_once_link: str = ''
-    hunting_awakening: bool = False
-    hunting_awakening_link: str = ''
-    scene_with_another: bool = False
-    scene_with_another_link: str = ''
-    conflict: bool = False
-    conflict_link: str = ''
-    combat: bool = False
-    combat_link: str = ''
-    unmitigated_stain: bool = False
-    unmitigated_stain_link: str = ''
-    wildcard: bool = False
-    wildcard_link: str = ''
-    wildcard_reason: str = ''
-    wildcard_amount: int = 0
+    claimed_criteria: list = field(default_factory=list)
+    rp_links: list = field(default_factory=list)
+    path: str = 'none'       # none / staff / helper
+    helper_note: str = ''
 
-    xp_claimed: int = 0
-    status: str = 'Pending'  # Pending, Approved, Denied, DUPLICATE
+    computed_xp: int = 0
+    status: str = 'Pending'  # Pending, Approved, Denied
     approved_xp: int = 0
     reviewed_by: str = ''
     review_date: str = ''
     st_notes: str = ''
-
-    @property
-    def categories(self) -> list[dict]:
-        """Return a list of category dicts for template rendering."""
-        return [
-            {
-                'name': 'Posted at least once',
-                'claimed': self.posted_once,
-                'link': self.posted_once_link,
-            },
-            {
-                'name': 'Hunting / Awakening scene',
-                'claimed': self.hunting_awakening,
-                'link': self.hunting_awakening_link,
-            },
-            {
-                'name': 'Scene with another character',
-                'claimed': self.scene_with_another,
-                'link': self.scene_with_another_link,
-            },
-            {
-                'name': 'Conflict with another character',
-                'claimed': self.conflict,
-                'link': self.conflict_link,
-            },
-            {
-                'name': 'Combat with another character',
-                'claimed': self.combat,
-                'link': self.combat_link,
-            },
-            {
-                'name': 'Unmitigated stain',
-                'claimed': self.unmitigated_stain,
-                'link': self.unmitigated_stain_link,
-            },
-            {
-                'name': f'Wildcard ({self.wildcard_amount} XP): {self.wildcard_reason}' if self.wildcard_reason else f'Wildcard ({self.wildcard_amount} XP)',
-                'claimed': self.wildcard,
-                'link': self.wildcard_link,
-            },
-        ]
+    staff_claim_conflict: bool = False
 
 
 @dataclass
@@ -115,18 +93,26 @@ class SpendRequest:
     row_index: int = 0
     timestamp: str = ''
     character_name: str = ''
-    spend_category: str = ''   # Attribute, Skill, Discipline, etc.
-    trait_name: str = ''       # e.g., "Strength", "Dominate"
+    spend_category: str = ''
+    trait_name: str = ''
     current_dots: int = 0
     new_dots: int = 0
-    xp_cost: int = 0          # Player-submitted cost
-    is_in_clan: bool = False
+    xp_cost: int = 0
     justification: str = ''
     status: str = 'Pending'
-    verified_cost: int = 0     # Staff-verified cost
+    verified_cost: int = 0
     reviewed_by: str = ''
     review_date: str = ''
     st_notes: str = ''
+
+    # Humanity conditional spend
+    is_humanity: bool = False
+    humanity_no_frenzy: bool = False
+    humanity_no_stains: bool = False
+    humanity_humane_act: bool = False
+
+    # Ingrained Discipline Flaw spend
+    is_ingrained_discipline: bool = False
 
 
 @dataclass
@@ -134,12 +120,12 @@ class LedgerEntry:
     """A single line in a character's XP ledger — award or spend."""
     row_index: int = 0
     character_name: str = ''
-    date: str = ''            # e.g., "2025-01-27"
-    awarded: int = 0          # XP earned (positive only)
-    spent: int = 0            # XP spent (positive only)
+    date: str = ''
+    awarded: int = 0
+    spent: int = 0
     reason: str = ''
-    entered_by: str = ''      # Staff who entered it
-    timestamp: str = ''       # When it was entered (auto)
+    entered_by: str = ''
+    timestamp: str = ''
 
 
 @dataclass
@@ -151,7 +137,133 @@ class AuditEntry:
     details: str = ''
 
 
-# Constants for dropdown options
+@dataclass
+class Coterie:
+    coterie_id: int = 0
+    name: str = ''
+    description: str = ''
+    created_at: str = ''
+    created_by: str = ''
+    active: bool = True
+    members: list = field(default_factory=list)   # list of character_name strings
+
+
+@dataclass
+class CoterieSpend:
+    coterie_id: int = 0
+    coterie_name: str = ''
+    initiated_by: str = ''
+    spend_category: str = ''
+    trait_name: str = ''
+    xp_cost_per_member: int = 0
+    total_xp_cost: int = 0
+    contributions: dict = field(default_factory=dict)  # {character_name: xp_committed}
+    status: str = 'Pending'   # Pending / Funded / Approved / Denied
+    justification: str = ''
+    reviewed_by: str = ''
+    review_date: str = ''
+    st_notes: str = ''
+    timestamp: str = ''
+
+
+# ── NYbN seed criteria (used to pre-populate the criteria table on first run) ─
+
+NYBN_SEED_CRITERIA = [
+    {
+        'label': 'Posting',
+        'description': 'Posted at least 3 times with at least 4 sentences per post during this night cycle.',
+        'xp_value': 3,
+        'category': 'base',
+        'requires_rp_links': True,
+        'requires_text_note': False,
+        'active': True,
+        'sort_order': 1,
+    },
+    {
+        'label': 'Monstrous Action',
+        'description': 'Performed a Monstrous Action.',
+        'xp_value': 1,
+        'category': 'player',
+        'requires_rp_links': True,
+        'requires_text_note': False,
+        'active': True,
+        'sort_order': 2,
+    },
+    {
+        'label': 'Altruistic Action',
+        'description': 'Did something where your character gains no benefit but helps others.',
+        'xp_value': 1,
+        'category': 'player',
+        'requires_rp_links': True,
+        'requires_text_note': False,
+        'active': True,
+        'sort_order': 3,
+    },
+    {
+        'label': 'Combat',
+        'description': 'At least level 2, damage dealt or taken (Physical and/or Social).',
+        'xp_value': 1,
+        'category': 'player',
+        'requires_rp_links': True,
+        'requires_text_note': False,
+        'active': True,
+        'sort_order': 4,
+    },
+    {
+        'label': 'Event',
+        'description': 'Being in a scene with an Event or story conclusion.',
+        'xp_value': 1,
+        'category': 'player',
+        'requires_rp_links': True,
+        'requires_text_note': False,
+        'active': True,
+        'sort_order': 5,
+    },
+    {
+        'label': 'Writing Prompt',
+        'description': 'Completed a Writing Prompt.',
+        'xp_value': 1,
+        'category': 'player',
+        'requires_rp_links': True,
+        'requires_text_note': False,
+        'active': True,
+        'sort_order': 6,
+    },
+    {
+        'label': 'Sabbat Character',
+        'description': 'Played a Sabbat character (with server threat level 2+).',
+        'xp_value': 1,
+        'category': 'player',
+        'requires_rp_links': True,
+        'requires_text_note': False,
+        'active': False,   # toggled on via admin panel when needed
+        'sort_order': 7,
+    },
+    {
+        'label': 'Staff Activity',
+        'description': 'Played an NPC, ran an active storyline, or ran combat with more than three combatants.',
+        'xp_value': 1,
+        'category': 'staff',
+        'requires_rp_links': False,
+        'requires_text_note': False,
+        'active': True,
+        'sort_order': 8,
+    },
+    {
+        'label': 'Helper Activity',
+        'description': 'Contributed to 3+ tickets, ran a scene in place of an ST, or played an NPC.',
+        'xp_value': 1,
+        'category': 'helper',
+        'requires_rp_links': False,
+        'requires_text_note': True,
+        'active': True,
+        'sort_order': 9,
+    },
+]
+
+
+# ── Constants ─────────────────────────────────────────────────────────────────
+
 CLANS = [
     'Brujah', 'Gangrel', 'Hecata', 'Lasombra', 'Malkavian',
     'Nosferatu', 'Ravnos', 'Salubri', 'Toreador', 'Tremere',

@@ -1,57 +1,88 @@
-# CLAUDE.md — mcbn-xp-tracker
+# CLAUDE.md — nybn-xp-tracker
 
 ## Project Overview
 
-Monorepo: Flask web app (Cloud Run) + Discord bot (Node/TypeScript, local) for managing XP and spend workflows for a game community.
+Monorepo: Flask web app + Discord bot (Node/TypeScript) for managing XP earn submissions,
+spend requests, and coterie management for New York by Night (NYbN), a Vampire: The
+Masquerade V5 play-by-post server.
+
+Adapted from the MCbN XP Tracker (MIT license). Key NYbN differences from the original:
+- XP cap of **350** per character (retirement window: 6 months after cap)
+- **6 members** per coterie (MCbN allows 5)
+- NYbN XP earn criteria (Posting 3 XP, Monstrous Action, Altruistic Action, Combat, Event, Writing Prompt, Staff Activity, Helper Activity)
+- Humanity spend is conditional (4 conditions, player certifies, staff verifies)
+- Ingrained Discipline Flaw support (up to 15 XP of extra powers, no sheet slot)
+- Timezone: **America/New_York**
 
 ```
-mcbn-xp-tracker/
+nybn-xp-tracker/
   apps/
     web/          # Flask app (Python 3.12) — system of record
     bot/          # Discord bot (Node 20 / TypeScript)
   packages/
     api-contract/ # Shared request/response schemas and enums
-    rules/        # Shared XP/spend formulas and fixtures
-  infra/
-    cloudrun/     # Deploy scripts and service config
-  docs/           # Runbooks, architecture, release notes
+    rules/        # Shared XP/spend formulas (xp_costs.json)
+  infra/          # Deploy scripts
+  docs/           # Runbooks and architecture notes
   scripts/        # Local bootstrap and ops scripts
-  compose.web.yml   # Docker profile: web only
-  compose.full.yml  # Docker profile: web + bot
 ```
+
+## NYbN XP Earn Criteria
+
+Seeded from `apps/web/app/models.py::NYBN_SEED_CRITERIA`. Editable live via the
+criteria admin panel — no code changes needed to add/modify/remove criteria.
+
+| Label | XP | Category | Notes |
+|---|---|---|---|
+| Posting | 3 | base | 3+ posts, 4+ sentences each |
+| Monstrous Action | 1 | player | |
+| Altruistic Action | 1 | player | |
+| Combat | 1 | player | Level 2+, damage dealt or taken |
+| Event | 1 | player | Scene with Event or story conclusion |
+| Writing Prompt | 1 | player | |
+| Sabbat Character | 1 | player | Seeded inactive — toggle on via admin panel |
+| Staff Activity | 1 | staff | Mutually exclusive with Helper |
+| Helper Activity | 1 | helper | Requires free-text note |
+
+## NYbN XP Spend Costs
+
+Defined in `packages/rules/xp_costs.json`. Cost formula: **new level × multiplier**.
+
+| Trait | Formula |
+|---|---|
+| Attribute | New level × 5 |
+| Skill | New level × 3 |
+| New Skill (0→1) | 3 flat |
+| Specialty | 3 flat |
+| Clan Discipline | New level × 5 |
+| Other Discipline | New level × 7 |
+| Caitiff Discipline | New level × 6 |
+| Ingrained Discipline | Clan discipline cost (max 15 XP total from flaw) |
+| Blood Sorcery Ritual | Ritual level × 3 |
+| Thin-Blood Alchemy Formula | Formula level × 3 |
+| Advantage | 3 per dot |
+| Blood Potency | New level × 10 |
+| Humanity | New rating × 2 (conditional — 4 conditions required) |
+
+Humanity conditions (player self-certifies, staff verifies):
+1. No frenzy in past 2 weeks (IRL)
+2. No stains gained in past 2 weeks (mitigated stains don't count)
+3. Did something humane OR played path accordingly
+4. Can only buy 1 Humanity at a time
 
 ## Local Development — Docker (preferred)
 
-Bootstrap scripts handle env file creation, container naming conflicts, and startup.
-
-### Web only
-
 ```bash
 ./scripts/bootstrap-local.sh web-only
-```
-
-### Web + bot (full stack)
-
-```bash
 ./scripts/bootstrap-local.sh web+bot
 ```
 
-### Other actions
-
-```bash
-./scripts/bootstrap-local.sh web-only logs
-./scripts/bootstrap-local.sh web+bot down
-./scripts/bootstrap-local.sh web+bot ps
-```
-
 Web runs at `http://127.0.0.1:5001`.
-Container names: `mcbn-xp-tracker-web`, `lasombra-bot`.
 
 ## Local Development — Host (alternative)
 
 - Web: `cd apps/web && python -m flask run --port 5001`
 - Bot: `cd apps/bot && npm start`
-- Host workflows remain valid; Docker profiles are additive.
 
 ## Environment / Secrets
 
@@ -59,66 +90,24 @@ Container names: `mcbn-xp-tracker-web`, `lasombra-bot`.
 |-----|---------------|----------|
 | web | `apps/web/.env` | `apps/web/.env.example` |
 | bot | `apps/bot/.env` | `apps/bot/.env.example` |
-| web (prod creds) | `apps/web/credentials/service-account.json` | — |
 
-- **Never commit `.env` files or service-account JSON.**
-- In full-stack Docker, bot must use `WEB_APP_BASE_URL=http://web:5001` (not `127.0.0.1`). The bootstrap script patches this automatically.
+- **Never commit `.env` files.**
+- Prod DB: Turso (libsql). Local dev: SQLite (auto-created, no config needed).
 - Details: `docs/ENV_AND_SECRETS.md`
-
-## Production Deploy (Web)
-
-```bash
-cd apps/web
-./deploy.sh     # build/push image, deploy Cloud Run revision
-./setup-secrets.sh  # sync env values to GCP Secret Manager
-```
-
-Bot remains locally hosted (launchd/systemd or Docker on host).
-
-## Bot Docker Audit Logs
-
-```bash
-cd apps/bot
-npm run ops:docker:up          # start bot container
-npm run ops:docker:logs        # tail logs
-npm run ops:docker:usage-30d   # export 30-day usage audit
-```
-
-Log retention env vars: `BOT_LOG_MAX_SIZE` (default `25m`), `BOT_LOG_MAX_FILE` (default `120`).
-
-## CI
-
-`.github/workflows/ci.yml` runs path-filtered jobs:
-
-| Job | Triggers on |
-|-----|------------|
-| `web-test-and-lint` | `apps/web/**`, `packages/**` |
-| `bot-test-and-lint` | `apps/bot/**`, `packages/**` |
-| `contract-tests` | `packages/api-contract/**`, `packages/rules/**` |
-| `docker-and-docs-hygiene` | compose files, `scripts/bootstrap-local.sh`, `docs/**`, `README.md` |
-
-The `docker-and-docs-hygiene` job validates all compose files and smoke-starts the web Docker profile.
-
-## Architecture Principles
-
-- `apps/web` is the authority for validation, approvals, and persistence (Turso/libsql database).
-- Google Sheets is a best-effort backup mirror — synced in the background after every write, never read for primary data.
-- `apps/bot` calls web API endpoints via service token — never writes to Sheets or DB directly.
-- Shared packages (`packages/`) prevent category/rule drift between clients.
-- Web: Cloud Run (scale to zero). Bot: always-on local process.
 
 ## Database
 
-- **Production**: Turso (libsql) — set `DATABASE_URL=libsql+https://...` + `TURSO_AUTH_TOKEN` in env/secrets.
-- **Local dev**: SQLite — default when `DATABASE_URL` is omitted or `sqlite:///data/db.sqlite`.
-- Schema is created automatically on startup (`db.create_all()`); no manual migration needed for new installs.
-- To migrate existing Sheets data: `cd apps/web && python scripts/migrate_sheets_to_db.py`
+- **Production**: Turso — set `DATABASE_URL=libsql+https://...` + `TURSO_AUTH_TOKEN`
+- **Local dev**: SQLite — default when `DATABASE_URL` is unset
+- Tables created automatically on startup (`db.create_all()`)
+- Criteria seeded from `NYBN_SEED_CRITERIA` in models.py on first run if table is empty
 
-## Key Docs
+## Architecture Principles
 
-- `docs/MONOREPO_ARCHITECTURE.md` — system boundaries and runtime model
-- `docs/ENV_AND_SECRETS.md` — env and secrets flow
-- `docs/RUN_WEB_DOCKER.md` — web Docker runbook
-- `docs/RUN_BOT_DOCKER.md` — bot Docker runbook with audit log instructions
-- `docs/INSTALL_LITE.md` / `docs/INSTALL_REGULAR.md` — install guides
-- `docs/RELEASE_2026-03-13_TURSO_DB_MIGRATION.md` — latest release notes
+- `apps/web` is the authority for validation, approvals, and persistence.
+- `apps/bot` calls web API endpoints via service token — never writes to DB directly.
+- Shared packages (`packages/`) prevent category/rule drift between web and bot.
+- Criteria are database-driven — add/modify/remove via admin panel, no code changes.
+- Spend cost calculations live in `packages/rules/xp_costs.json` + `apps/web/app/xp_rules.py`.
+- XP cap (350) enforced at claim approval time. Cap reached → retirement window opens (6 months).
+- Coterie max members: 6 (enforced in `apps/web/app/db.py::COTERIE_MAX_MEMBERS`).
