@@ -6,7 +6,7 @@ from sqlalchemy import Integer, String, Boolean, Text
 db = SQLAlchemy()
 
 XP_CAP = 350
-COTERIE_MAX_MEMBERS = 5  # NYbN: max 5; 6+ splits into two allied coteries
+COTERIE_MAX_MEMBERS = 6  # NYbN allows 6; MCbN allows 5
 
 
 class DbCharacter(db.Model):

@@ -1767,22 +1767,27 @@ class DBService:
             if not membership:
                 raise ValueError(f'{character_name} is not a member of this coterie.')
 
-        # Per-background 3-dot cap (counts Approved + Pending together)
-        existing_total = db.session.query(
-            func.coalesce(func.sum(DbCoterieMerit.dots), 0)
-        ).filter(
-            DbCoterieMerit.coterie_id == coterie_id,
-            func.lower(DbCoterieMerit.merit_name) == merit_name.lower(),
-            DbCoterieMerit.status.in_(['Approved', 'Pending']),
-        ).scalar()
-        existing_total = int(existing_total or 0)
+        # 3-dot cap applies only to creation + donated pool (not purchased).
+        # "The maximum rating from free dots is 3; donated backgrounds cannot
+        #  stack above 3 dots." — purchased advantages have no hard cap.
+        if merit_type in ('creation', 'donated'):
+            existing_pool = db.session.query(
+                func.coalesce(func.sum(DbCoterieMerit.dots), 0)
+            ).filter(
+                DbCoterieMerit.coterie_id == coterie_id,
+                func.lower(DbCoterieMerit.merit_name) == merit_name.lower(),
+                DbCoterieMerit.merit_type.in_(['creation', 'donated']),
+                DbCoterieMerit.status.in_(['Approved', 'Pending']),
+            ).scalar()
+            existing_pool = int(existing_pool or 0)
 
-        if existing_total + dots > self.COTERIE_MERIT_CAP:
-            remaining_cap = self.COTERIE_MERIT_CAP - existing_total
-            raise ValueError(
-                f'"{merit_name}" is already at {existing_total}/{self.COTERIE_MERIT_CAP} dots. '
-                f'Only {remaining_cap} more dot(s) can be added.'
-            )
+            if existing_pool + dots > self.COTERIE_MERIT_CAP:
+                remaining_cap = self.COTERIE_MERIT_CAP - existing_pool
+                raise ValueError(
+                    f'"{merit_name}" already has {existing_pool}/{self.COTERIE_MERIT_CAP} dots '
+                    f'from creation/donated sources. '
+                    f'Only {remaining_cap} more dot(s) can be added this way.'
+                )
 
         xp_cost = dots * 3 if merit_type == 'purchased' else 0
 

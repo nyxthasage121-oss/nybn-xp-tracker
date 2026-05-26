@@ -59,14 +59,17 @@ def detail(coterie_id: int):
     pending_merits = [m for m in merits if m.status == 'Pending']
     approved_merits = [m for m in merits if m.status == 'Approved']
 
-    # Group approved merits by background name for the registry view
+    # Group approved merits by background name for the registry view.
+    # Track creation/donated pool separately so the cap indicator is accurate.
     _merit_cap = DBService.COTERIE_MERIT_CAP
     _groups: dict = {}
     for m in approved_merits:
         key = m.merit_name.strip().lower()
         if key not in _groups:
-            _groups[key] = {'name': m.merit_name, 'total': 0, 'items': []}
+            _groups[key] = {'name': m.merit_name, 'pool_total': 0, 'total': 0, 'items': []}
         _groups[key]['total'] += m.dots
+        if m.merit_type in ('creation', 'donated'):
+            _groups[key]['pool_total'] += m.dots
         _groups[key]['items'].append(m)
     grouped_merits = sorted(_groups.values(), key=lambda g: g['name'].lower())
 

@@ -475,8 +475,8 @@
               <div class="col-4">
                 <label class="form-label small fw-semibold">Dots <span class="text-danger">*</span></label>
                 <input type="number" name="dots" class="form-control form-control-sm"
-                       required min="1" max="{{ merit_cap }}" value="1" id="merit-dots-inp">
-                <div class="form-text" style="font-size:0.68rem">max {{ merit_cap }} per background</div>
+                       required min="1" max="5" value="1" id="merit-dots-inp">
+                <div class="form-text" id="dots-cap-hint" style="font-size:0.68rem">max {{ merit_cap }} (creation/donated)</div>
               </div>
             </div>
             <div class="mb-2">
@@ -492,18 +492,27 @@
           </form>
           <script>
           (function () {
-            var typeEl = document.getElementById('merit-type-sel');
-            var dotsEl = document.getElementById('merit-dots-inp');
-            var hint   = document.getElementById('merit-cost-hint');
+            var typeEl    = document.getElementById('merit-type-sel');
+            var dotsEl    = document.getElementById('merit-dots-inp');
+            var costHint  = document.getElementById('merit-cost-hint');
+            var capHint   = document.getElementById('dots-cap-hint');
             var remaining = {{ creation_budget.remaining }};
+            var meritCap  = {{ merit_cap }};
             function refresh() {
               var t = typeEl.value, d = parseInt(dotsEl.value, 10) || 0;
-              if (t === 'purchased')
-                hint.textContent = d + ' × 3 XP = ' + (d * 3) + ' XP from member';
-              else if (t === 'creation')
-                hint.textContent = d + ' creation dot(s) — ' + remaining + ' remaining in budget';
-              else
-                hint.textContent = 'Donated — no XP cost';
+              if (t === 'purchased') {
+                dotsEl.max = 5;
+                capHint.textContent = 'max 5 (purchased, no pool cap)';
+                costHint.textContent = d + ' × 3 XP = ' + (d * 3) + ' XP from member';
+              } else if (t === 'creation') {
+                dotsEl.max = meritCap;
+                capHint.textContent = 'max ' + meritCap + ' per background (creation/donated pool)';
+                costHint.textContent = d + ' creation dot(s) — ' + remaining + ' remaining in budget';
+              } else {
+                dotsEl.max = meritCap;
+                capHint.textContent = 'max ' + meritCap + ' per background (creation/donated pool)';
+                costHint.textContent = 'Donated — no XP cost';
+              }
             }
             typeEl.addEventListener('change', refresh);
             dotsEl.addEventListener('input', refresh);
@@ -592,17 +601,22 @@
             <tr>
               <td class="ps-3 fw-semibold">
                 {{ group.name }}
-                {% if group.total >= merit_cap %}
-                <span class="ms-1" style="display:inline-block;font-size:0.65rem;padding:1px 5px;border-radius:3px;background:rgba(204,26,26,0.18);border:1px solid rgba(204,26,26,0.35);color:var(--vtm-red)">Capped</span>
+                {% if group.pool_total >= merit_cap %}
+                <span class="ms-1" style="display:inline-block;font-size:0.65rem;padding:1px 5px;border-radius:3px;background:rgba(204,26,26,0.18);border:1px solid rgba(204,26,26,0.35);color:var(--vtm-red)">Pool Capped</span>
                 {% endif %}
               </td>
               <td class="text-center">
                 <div class="dot-pips mb-1">
                   {% for i in range(1, merit_cap + 1) %}
-                  <span class="dot-pip {% if i <= group.total %}filled{% endif %}"></span>
+                  <span class="dot-pip {% if i <= group.pool_total %}filled{% endif %}"></span>
                   {% endfor %}
                 </div>
-                <div class="text-muted" style="font-size:0.7rem">{{ group.total }}/{{ merit_cap }}</div>
+                <div class="text-muted" style="font-size:0.7rem">
+                  {{ group.pool_total }}/{{ merit_cap }} pool
+                  {% if group.total > group.pool_total %}
+                  <span class="ms-1">+{{ group.total - group.pool_total }} purchased</span>
+                  {% endif %}
+                </div>
               </td>
               <td>
                 {% for m in group.items | sort(attribute='character_name') %}
@@ -781,7 +795,6 @@
         <h6 class="text-danger">Formation</h6>
         <ul class="small">
           <li>Requires at least <strong>3 founding members</strong>; maximum <strong>{{ coterie_max }} members</strong> total.</li>
-          <li>A group of 6+ can split into two allied coteries.</li>
           <li>Each member must be an active character not already in another coterie.</li>
           <li>Starting dots: distribute <strong>5 dots</strong> across Chasse, Lien, and Portillon at creation.</li>
           <li>If a player is inactive for 2+ months, they and their contributed backgrounds are removed.</li>
@@ -813,9 +826,9 @@
         <ul class="small">
           <li>Creation: <strong>2 free dots per member</strong> in any advantage/background (all placement must be narratively justified).</li>
           <li>Taking Coterie Flaws at creation (unanimous consent) grants additional creation dots.</li>
-          <li><strong>Maximum {{ merit_cap }} dots</strong> in any single background — from free dots, donations, and purchases combined.</li>
-          <li><em>Donated:</em> any member may contribute one of their personal backgrounds to the pool at any rating; cannot stack above {{ merit_cap }} dots total.</li>
-          <li><em>Purchased:</em> individual members buy new coterie advantages post-creation at <strong>3 XP per dot</strong>; requires staff approval.</li>
+          <li>Free creation dots + donated backgrounds: <strong>maximum {{ merit_cap }} dots</strong> per background (these pool together).</li>
+          <li><em>Donated:</em> any member may contribute one of their personal backgrounds to the pool at any rating; cannot stack the creation/donated pool above {{ merit_cap }} dots.</li>
+          <li><em>Purchased:</em> individual members buy coterie advantages post-creation at <strong>3 XP per dot</strong>; no hard dot cap; requires staff approval.</li>
         </ul>
       </div>
     </div>
