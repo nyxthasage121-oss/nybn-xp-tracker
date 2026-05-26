@@ -4,11 +4,11 @@ import type {
   Client,
   Collection,
 } from 'discord.js';
-import type { TrackerAdapter } from './services/adapter';
+import type { ApiClient } from './api';
 
 export type CommandContext = {
   client: BotClient;
-  adapter: TrackerAdapter;
+  apiClient: ApiClient;
 };
 
 export type BotCommand = {

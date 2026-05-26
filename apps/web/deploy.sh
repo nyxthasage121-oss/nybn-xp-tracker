@@ -89,6 +89,7 @@ gcloud run deploy "${SERVICE_NAME}" \
   --update-secrets "DISCORD_CLIENT_ID=nybn-discord-client-id:latest" \
   --update-secrets "DISCORD_CLIENT_SECRET=nybn-discord-client-secret:latest" \
   --update-secrets "ALLOWED_DISCORD_IDS=nybn-discord-allowed-ids:latest" \
+  --update-secrets "MODERATOR_DISCORD_IDS=nybn-discord-moderator-ids:latest" \
   --update-secrets "DATABASE_URL=nybn-database-url:latest" \
   --update-secrets "TURSO_AUTH_TOKEN=nybn-turso-auth-token:latest" \
   --update-secrets "WEB_APP_API_TOKEN=nybn-web-app-api-token:latest"

@@ -11,5 +11,9 @@
     "skipLibCheck": true
   },
   "include": ["src"],
-  "exclude": ["src/__tests__"]
+  "exclude": [
+    "src/__tests__",
+    "src/commands/xp.ts",
+    "src/claimReminderInteractions.ts"
+  ]
 }

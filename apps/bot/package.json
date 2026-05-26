@@ -1,7 +1,7 @@
 {
-  "name": "mcbn-tracker-bot",
+  "name": "nybn-tracker-bot",
   "version": "1.0.0",
-  "description": "Discord bot front-end for MCbN XP workflows",
+  "description": "NYbN Discord bot — player registration and notifications",
   "main": "dist/index.js",
   "scripts": {
     "test": "vitest run src/__tests__",
@@ -25,7 +25,7 @@
     "typescript",
     "xp-tracker"
   ],
-  "author": "MCbN",
+  "author": "NYbN",
   "license": "MIT",
   "type": "commonjs",
   "engines": {

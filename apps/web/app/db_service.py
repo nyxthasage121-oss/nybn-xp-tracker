@@ -18,13 +18,13 @@ from app.db import (
     DbCharacter, DbPlayPeriod, DbCriteria,
     DbXPClaim, DbSpendRequest, DbLedgerEntry, DbAuditLog,
     DbCoterie, DbCoterieMembership, DbCoterieSpend, DbHuntingSite,
-    DbChronicleSettings,
+    DbChronicleSettings, DbPlayerProfile,
 )
 from app.models import (
     Character, PlayPeriod, Criteria, XPClaim,
     SpendRequest, LedgerEntry, AuditEntry,
     Coterie, CoterieSpend, HuntingSite,
-    ChronicleSettings,
+    ChronicleSettings, PlayerProfile,
     NYBN_SEED_CRITERIA, NYBN_SEED_SITES,
 )
 
@@ -377,6 +377,56 @@ class DBService:
             'player_discord': discord_id,
             'player_discord_name': discord_name,
         })
+
+    # ── Player Profiles ───────────────────────────────────────────────────────
+
+    def get_player_profile(self, discord_id: str) -> Optional[PlayerProfile]:
+        """Return the PlayerProfile for a Discord user, or None if not found."""
+        row = DbPlayerProfile.query.get(str(discord_id))
+        if not row:
+            return None
+        return PlayerProfile(
+            discord_id=row.discord_id,
+            cubby_channel_id=row.cubby_channel_id or '',
+            registered_at=row.registered_at or '',
+        )
+
+    def save_player_profile(self, discord_id: str, cubby_channel_id: str) -> PlayerProfile:
+        """Create or update a player profile with the given cubby channel ID."""
+        row = DbPlayerProfile.query.get(str(discord_id))
+        if row:
+            row.cubby_channel_id = cubby_channel_id
+        else:
+            row = DbPlayerProfile(
+                discord_id=str(discord_id),
+                cubby_channel_id=cubby_channel_id,
+                registered_at=_today_str(),
+            )
+            db.session.add(row)
+        db.session.commit()
+        return PlayerProfile(
+            discord_id=row.discord_id,
+            cubby_channel_id=row.cubby_channel_id,
+            registered_at=row.registered_at,
+        )
+
+    def register_player(self, discord_id: str, discord_name: str,
+                        character_name: str, cubby_channel_id: str) -> None:
+        """Link a character to a Discord user and store their cubby channel ID.
+
+        Raises ValueError if character not found, not active, or already linked
+        to a different Discord ID.
+        """
+        char = self.get_character(character_name)
+        if not char:
+            raise ValueError(f'Character "{character_name}" not found.')
+        if not char.active:
+            raise ValueError(f'"{character_name}" is not an active character.')
+        if char.player_discord and char.player_discord != str(discord_id):
+            raise ValueError(f'"{character_name}" is already linked to another player.')
+
+        self.link_character_to_discord(character_name, discord_id, discord_name)
+        self.save_player_profile(discord_id, cubby_channel_id)
 
     def deactivate_character(self, name: str) -> None:
         self.update_character(name, {'active': False})

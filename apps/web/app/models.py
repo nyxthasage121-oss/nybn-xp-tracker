@@ -38,6 +38,14 @@ class Character:
 
 
 @dataclass
+class PlayerProfile:
+    """Persistent player data keyed by Discord ID — cubby channel, registration date."""
+    discord_id: str
+    cubby_channel_id: str = ''
+    registered_at: str = ''
+
+
+@dataclass
 class Criteria:
     """A single XP earn criterion. The submission form is built from active criteria."""
     criteria_id: int = 0

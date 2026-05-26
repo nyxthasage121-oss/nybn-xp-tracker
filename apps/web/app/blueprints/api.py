@@ -250,6 +250,71 @@ def health():
     return jsonify({'ok': True})
 
 
+# ── Player registration ───────────────────────────────────────────────────────
+
+@bp.route('/player/characters', methods=['GET'])
+@require_bot_scope('read')
+@_limit('60 per minute')
+def player_characters():
+    """Return active unlinked characters for /register autocomplete.
+
+    Optionally pass ?discord_id=... to also include characters already linked
+    to that player (so they can re-register to update their cubby channel ID).
+    """
+    discord_id = request.args.get('discord_id', '').strip()
+    unlinked = db_service.get_unlinked_characters()
+    names = [c.character_name for c in unlinked]
+
+    if discord_id and DISCORD_ID_RE.match(discord_id):
+        already_linked = db_service.get_characters_by_discord_id(discord_id)
+        linked_names = [c.character_name for c in already_linked]
+        names = sorted(set(names) | set(linked_names))
+
+    return jsonify({'characters': names})
+
+
+@bp.route('/player/register', methods=['POST'])
+@require_bot_scope('write')
+@_limit('20 per minute')
+def player_register():
+    """Register a player — links their Discord ID to a character and stores cubby channel ID.
+
+    Body (JSON):
+        discord_id      — player's Discord user ID (snowflake string)
+        discord_name    — player's display name
+        character_name  — exact character name to link
+        cubby_channel_id — Discord channel ID of the player's cubby
+
+    Returns:
+        200  { ok: true, character_name, discord_id, cubby_channel_id }
+        400  { error: "..." }   validation / business-rule failure
+    """
+    data = request.get_json(silent=True) or {}
+    discord_id = str(data.get('discord_id', '')).strip()
+    discord_name = str(data.get('discord_name', '')).strip()
+    character_name = str(data.get('character_name', '')).strip()
+    cubby_channel_id = str(data.get('cubby_channel_id', '')).strip()
+
+    if not discord_id or not DISCORD_ID_RE.match(discord_id):
+        return jsonify({'error': 'Invalid or missing discord_id'}), 400
+    if not character_name:
+        return jsonify({'error': 'character_name is required'}), 400
+    if not cubby_channel_id or not DISCORD_ID_RE.match(cubby_channel_id):
+        return jsonify({'error': 'Invalid or missing cubby_channel_id'}), 400
+
+    try:
+        db_service.register_player(discord_id, discord_name, character_name, cubby_channel_id)
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
+
+    return jsonify({
+        'ok': True,
+        'character_name': character_name,
+        'discord_id': discord_id,
+        'cubby_channel_id': cubby_channel_id,
+    })
+
+
 @bp.route('/meta/claim-context', methods=['GET'])
 @require_bot_scope('read')
 @_limit("60 per minute")

@@ -164,6 +164,14 @@ class DbAuditLog(db.Model):
     details = db.Column(Text, default='')
 
 
+class DbPlayerProfile(db.Model):
+    """One row per Discord user — stores cubby channel ID for notifications."""
+    __tablename__ = 'player_profiles'
+    discord_id = db.Column(String(30), primary_key=True)
+    cubby_channel_id = db.Column(String(30), default='')
+    registered_at = db.Column(String(20), default='')
+
+
 # ── Coterie tables ────────────────────────────────────────────────────────────
 
 class DbCoterie(db.Model):
