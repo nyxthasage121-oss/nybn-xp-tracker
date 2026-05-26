@@ -6,7 +6,7 @@ import discord
 from discord.ext import commands
 from loguru import logger
 
-from config import STORYTELLER_ROLE, SUPPORTER_GUILD, SUPPORTER_ROLE
+from config import HELPER_ROLE, STORYTELLER_ROLE, SUPPORTER_GUILD, SUPPORTER_ROLE
 from ctx import AppCtx
 
 AppInteraction = AppCtx | discord.Interaction
@@ -47,6 +47,29 @@ def require_admin_or_storyteller():
 
     def predicate(ctx: discord.ApplicationContext) -> bool:
         if is_admin(ctx) or is_storyteller(ctx):
+            return True
+        raise commands.MissingPermissions(["administrator"])
+
+    return commands.check(predicate)
+
+
+def is_helper(ctx: AppInteraction) -> bool:
+    """Check if the user has the configured Helper role."""
+    if HELPER_ROLE is None:
+        return False
+    user = cast(discord.Member, ctx.user)
+    return user.get_role(HELPER_ROLE) is not None
+
+
+def require_helper_or_above():
+    """A @commands.check decorator that passes for Helpers, Storytellers, and admins.
+
+    Use this for commands any staff member can run (e.g. character approval).
+    Use require_admin_or_storyteller() for commands that should be ST/admin only (e.g. XP).
+    """
+
+    def predicate(ctx: discord.ApplicationContext) -> bool:
+        if is_admin(ctx) or is_storyteller(ctx) or is_helper(ctx):
             return True
         raise commands.MissingPermissions(["administrator"])
 

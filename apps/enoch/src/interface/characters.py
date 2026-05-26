@@ -13,7 +13,7 @@ from ctx import AppCtx
 from enoch.character.approve import approve as _approve_character
 from enoch.options import char_option, player_option
 from utils import decorators, not_on_lockdown
-from utils.permissions import require_admin_or_storyteller
+from utils.permissions import require_admin_or_storyteller, require_helper_or_above
 from utils.text import strtobool
 
 if TYPE_CHECKING:
@@ -72,13 +72,13 @@ class Characters(commands.Cog, name="Character Management"):
     _AGES  = ["Fledgling", "Neonate", "Ancilla", "Elder"]
 
     @character.command(name="approve")
-    @require_admin_or_storyteller()
+    @require_helper_or_above()
     @option("player",         description="The player being approved",    type=discord.Member)
     @option("name",           description="Character name")
     @option("clan",           description="Vampire clan",                 choices=[OptionChoice(c, c) for c in _CLANS])
     @option("sect",           description="Sect or faction",              choices=[OptionChoice(s, s) for s in _SECTS])
     @option("age_category",   description="Age category",                 choices=[OptionChoice(a, a) for a in _AGES])
-    @option("cubby",          description="Player's cubby channel",       type=discord.TextChannel, required=False, default=None)
+    @option("cubby",          description="Player's cubby channel (defaults to current channel)", type=discord.TextChannel, required=False, default=None)
     @option("creation_xp",    description="Starting XP (default 0)",      type=int, required=False, default=0)
     async def character_approve(
         self,

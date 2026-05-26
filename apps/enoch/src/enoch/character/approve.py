@@ -32,6 +32,9 @@ async def approve(
     """Approve a character: create it in the dashboard, assign roles, notify player."""
     await ctx.defer(ephemeral=True)
 
+    # Default to the channel the command was run in (usually the player's cubby)
+    cubby = cubby or ctx.channel
+
     # 1. Create in dashboard -----------------------------------------------
     try:
         await create_character(
