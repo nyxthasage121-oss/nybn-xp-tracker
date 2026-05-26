@@ -577,7 +577,7 @@ def activate(name):
 @bp.route('/<name>/retire', methods=['POST'])
 @require_staff
 def retire(name):
-    """Retire a character — permanently marks them retired and deactivates them."""
+    """Retire a character — marks them retired and deactivates them."""
     char = db_service.get_character(name)
     if not char:
         abort(404)
@@ -599,6 +599,34 @@ def retire(name):
         )
 
     flash(f'{name} has been retired. Their story is complete. 🎓', 'success')
+    return redirect(url_for('roster.detail', name=name))
+
+
+@bp.route('/<name>/unretire', methods=['POST'])
+@require_staff
+def unretire(name):
+    """Reverse a retirement — re-activates the character."""
+    char = db_service.get_character(name)
+    if not char:
+        abort(404)
+    if not char.retired:
+        flash(f'{name} is not retired.', 'warning')
+        return redirect(url_for('roster.detail', name=name))
+
+    staff = get_staff_user()
+    try:
+        db_service.unretire_character(name, staff)
+    except ValueError as e:
+        flash(str(e), 'danger')
+        return redirect(url_for('roster.detail', name=name))
+
+    if sheets_sync:
+        sheets_sync.sync_log_action(
+            staff_user=staff, action_type='unretire_character',
+            target=name, details=f'Reversed retirement for {name}',
+        )
+
+    flash(f'{name} has been un-retired and is active again.', 'success')
     return redirect(url_for('roster.detail', name=name))
 
 

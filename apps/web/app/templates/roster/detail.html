@@ -89,10 +89,17 @@
         </button>
       </form>
       {% endif %}
-      {% if not char.retired %}
+      {% if char.retired %}
+      <form method="POST" action="{{ url_for('roster.unretire', name=char.character_name) }}" class="d-inline">
+        <button type="submit" class="btn btn-sm btn-outline-success"
+                data-confirm="Un-retire {{ char.character_name }}? This will mark them active again and clear their retired status.">
+          <i class="bi bi-arrow-counterclockwise"></i> Un-retire
+        </button>
+      </form>
+      {% else %}
       <form method="POST" action="{{ url_for('roster.retire', name=char.character_name) }}" class="d-inline">
         <button type="submit" class="btn btn-sm btn-danger"
-                data-confirm="Retire {{ char.character_name }}? This permanently marks them as retired and deactivates their character. This cannot be undone.">
+                data-confirm="Retire {{ char.character_name }}? This marks them as retired and deactivates their character. You can reverse this if needed.">
           <i class="bi bi-mortarboard"></i> Retire
         </button>
       </form>

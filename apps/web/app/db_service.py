@@ -417,6 +417,20 @@ class DBService:
         self.log_action(staff_user, 'retire_character', character_name,
                         f'Character retired on {_today_str()}.')
 
+    def unretire_character(self, character_name: str, staff_user: str) -> None:
+        """Reverse a retirement — marks the character active again."""
+        row = DbCharacter.query.filter(
+            func.lower(DbCharacter.character_name) == character_name.lower()
+        ).first()
+        if not row:
+            raise ValueError(f'Character not found: {character_name}')
+        row.retired = False
+        row.retired_date = ''
+        row.active = True
+        db.session.commit()
+        self.log_action(staff_user, 'unretire_character', character_name,
+                        f'Retirement reversed on {_today_str()}.')
+
     # ── Play Periods ──────────────────────────────────────────────────────────
 
     def get_all_periods(self) -> list[PlayPeriod]:
