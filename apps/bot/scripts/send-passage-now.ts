@@ -1,6 +1,6 @@
 /**
  * One-off script to manually fire a passage-of-time message to the production channel.
- * Usage: npx tsx scripts/send-passage-now.ts <sunrise|sunset|downtime>
+ * Usage: npx tsx scripts/send-passage-now.ts <sunrise|sunset|midnight|downtime>
  */
 import 'dotenv/config';
 import path from 'node:path';
@@ -8,21 +8,23 @@ import { AttachmentBuilder, Client, GatewayIntentBits } from 'discord.js';
 import { config } from '../src/config';
 import {
   PASSAGE_DOWNTIME_MESSAGE,
+  PASSAGE_MIDNIGHT_MESSAGE,
   PASSAGE_SUNRISE_MESSAGE,
   PASSAGE_SUNSET_MESSAGE,
 } from '../src/services/passageOfTimeService';
 
-const EVENT = (process.argv[2] ?? '') as 'sunrise' | 'sunset' | 'downtime';
+const EVENT = (process.argv[2] ?? '') as 'sunrise' | 'sunset' | 'midnight' | 'downtime';
 const EXTRA = process.argv[3] ?? '';
 
-if (!['sunrise', 'sunset', 'downtime'].includes(EVENT)) {
-  console.error('Usage: npx tsx scripts/send-passage-now.ts <sunrise|sunset|downtime> [extra text]');
+if (!['sunrise', 'sunset', 'midnight', 'downtime'].includes(EVENT)) {
+  console.error('Usage: npx tsx scripts/send-passage-now.ts <sunrise|sunset|midnight|downtime> [extra text]');
   process.exit(1);
 }
 
 const BODIES: Record<typeof EVENT, string> = {
   sunrise: PASSAGE_SUNRISE_MESSAGE,
   sunset: PASSAGE_SUNSET_MESSAGE,
+  midnight: PASSAGE_MIDNIGHT_MESSAGE,
   downtime: PASSAGE_DOWNTIME_MESSAGE,
 };
 

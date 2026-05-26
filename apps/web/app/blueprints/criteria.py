@@ -35,7 +35,7 @@ def add_criterion():
         flash('XP value must be a whole number.', 'danger')
         return redirect(url_for('criteria.list_criteria'))
 
-    if category not in ('base', 'player', 'staff', 'helper'):
+    if category not in ('base', 'player', 'staff', 'helper', 'none'):
         flash('Invalid category.', 'danger')
         return redirect(url_for('criteria.list_criteria'))
 
@@ -78,7 +78,7 @@ def edit_criterion(criterion_id: int):
         flash('XP value must be a whole number.', 'danger')
         return redirect(url_for('criteria.list_criteria'))
 
-    if category not in ('base', 'player', 'staff', 'helper'):
+    if category not in ('base', 'player', 'staff', 'helper', 'none'):
         flash('Invalid category.', 'danger')
         return redirect(url_for('criteria.list_criteria'))
 

@@ -11,6 +11,7 @@ import path from 'node:path';
 import {
   PassageOfTimeService,
   PASSAGE_DOWNTIME_MESSAGE,
+  PASSAGE_MIDNIGHT_MESSAGE,
   PASSAGE_SUNRISE_MESSAGE,
   PASSAGE_SUNSET_MESSAGE,
 } from './services/passageOfTimeService';
@@ -99,6 +100,15 @@ const passageOfTimeService = new PassageOfTimeService(client, {
       cadenceWeeks: 2,
       body: PASSAGE_SUNSET_MESSAGE,
       imageFile: path.join(ASSETS_DIR, 'Nashville_at_Night.gif'),
+    },
+    {
+      name: 'midnight',
+      weekdayLocal: config.passageMidnightWeekdayLocal,
+      hourLocal: config.passageMidnightHourLocal,
+      minuteLocal: config.passageMidnightMinuteLocal,
+      anchorDate: config.passageMidnightAnchorDate,
+      cadenceWeeks: 2,
+      body: PASSAGE_MIDNIGHT_MESSAGE,
     },
     {
       name: 'downtime',

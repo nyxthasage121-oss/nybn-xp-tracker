@@ -62,25 +62,26 @@
           <div class="collapse" id="edit-ratings-form">
             <hr class="border-secondary">
             <form method="POST" action="{{ url_for('coteries.update_ratings', coterie_id=coterie.coterie_id) }}">
-              <div class="row g-2 mb-2">
-                <div class="col-4">
+              <p class="text-muted small mb-2">Each rating 0–5. <em>Portillon cannot exceed Chasse.</em></p>
+              <div class="row g-3 mb-2">
+                <div class="col-sm-4">
                   <label class="form-label small fw-semibold">Chasse</label>
-                  <input type="number" name="chasse" id="inp-chasse" class="form-control form-control-sm"
+                  <input type="number" name="chasse" id="inp-chasse" class="form-control"
                          min="0" max="5" value="{{ coterie.chasse }}" required>
                 </div>
-                <div class="col-4">
+                <div class="col-sm-4">
                   <label class="form-label small fw-semibold">Lien</label>
-                  <input type="number" name="lien" class="form-control form-control-sm"
+                  <input type="number" name="lien" class="form-control"
                          min="0" max="5" value="{{ coterie.lien }}" required>
                 </div>
-                <div class="col-4">
-                  <label class="form-label small fw-semibold">Portillon</label>
-                  <input type="number" name="portillon" id="inp-portillon" class="form-control form-control-sm"
+                <div class="col-sm-4">
+                  <label class="form-label small fw-semibold">Portillon <span class="text-muted">(≤ Chasse)</span></label>
+                  <input type="number" name="portillon" id="inp-portillon" class="form-control"
                          min="0" max="5" value="{{ coterie.portillon }}" required>
                 </div>
               </div>
               <div class="text-danger small mb-2 d-none" id="portillon-warning">
-                Portillon cannot exceed Chasse.
+                <i class="bi bi-exclamation-triangle-fill"></i> Portillon cannot exceed Chasse.
               </div>
               <button type="submit" class="btn btn-sm btn-danger" id="ratings-save">Save Ratings</button>
             </form>

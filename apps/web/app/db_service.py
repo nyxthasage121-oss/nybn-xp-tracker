@@ -288,11 +288,12 @@ class DBService:
         return bool(row.active)
 
     def remove_criterion(self, criteria_id: int) -> None:
-        """Set active=False. Never hard-deletes — old claims reference criteria by id."""
+        """Hard-delete the criterion row. Historical claims reference criteria by id in
+        JSON so they remain readable; the label simply won't resolve to a live row."""
         row = DbCriteria.query.get(criteria_id)
         if not row:
             raise ValueError(f'Criterion not found: {criteria_id}')
-        row.active = False
+        db.session.delete(row)
         db.session.commit()
 
     # ── Roster ────────────────────────────────────────────────────────────────

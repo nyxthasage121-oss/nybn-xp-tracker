@@ -2,7 +2,12 @@
 
 {% block content %}
 <div class="container mt-4">
-    <h2>Claims History</h2>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">Claims History</h2>
+        <a href="{{ url_for('claims.pending') }}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Pending Claims
+        </a>
+    </div>
 
     <div class="mb-3 mt-3">
         <input type="text" id="table-search" class="form-control" placeholder="Search claims...">

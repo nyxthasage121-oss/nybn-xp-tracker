@@ -400,6 +400,6 @@ CLANS = [
 
 AGE_CATEGORIES = ['Fledgling', 'Neonate', 'Ancilla', 'Elder', 'Mortal']
 
-SECTS = ['Camarilla', 'Anarch', 'Hecata', 'Autarkis', 'NA']
+SECTS = ['Camarilla', 'Anarch', 'Sabbat', 'Hecata', 'Autarkis', 'NA']
 
 SPEND_CATEGORIES = load_json('packages/api-contract/spend_categories.json')

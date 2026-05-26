@@ -4,7 +4,7 @@ import { AttachmentBuilder, ChannelType, type Client, type GuildTextBasedChannel
 import { errorToMessage, logEvent } from '../logger';
 
 type ScheduledEventConfig = {
-  name: 'sunrise' | 'sunset' | 'downtime';
+  name: 'sunrise' | 'sunset' | 'downtime' | 'midnight';
   weekdayLocal: number;
   hourLocal: number;
   minuteLocal: number;
@@ -14,19 +14,28 @@ type ScheduledEventConfig = {
   imageFile?: string;
 };
 
-export const PASSAGE_SUNSET_MESSAGE = `The kindred of Nashville once again rule the night. Now the predatory denizens of Music City continue their attempts to rebuild, while thralls bound to their masters serve their every whim, and unknowing mortals expose themselves to danger by roaming in the dark.
+export const PASSAGE_SUNSET_MESSAGE = `The kindred of New York once again rule the night. The City That Never Sleeps becomes the hunting ground of the undead, as thralls serve their masters and unknowing mortals expose themselves to danger by roaming in the dark.
 
-Those of you who have not completed your experience submissions, please do so when you get the chance! This night shall end in two weeks!`;
+Night submissions are now **open**! This night runs for two weeks — Midnight falls this Saturday at 2 PM ET.`;
 
-export const PASSAGE_SUNRISE_MESSAGE = `The sun rises over Music City as creatures of the night retreat into their havens. Post your experience submissions through the player portal (https://mcbn.jkomg.us/player/) and begin wrapping up active scenes! You may continue roleplaying in your current scene until the next night begins, and if you wish to still continue a scene, then please move it into to-be-continued!
+export const PASSAGE_MIDNIGHT_MESSAGE = `Midnight has fallen over New York City. The night is at its peak — the undead are at their most powerful, and the city's mortals grow careless in the dark.
 
-The next night begins on Tuesday at noon CT, and will last until two Sundays from now!`;
+🌙 A reminder that **XP submissions for this night are still open**. Sunrise arrives next Saturday at 2 PM ET — make sure your scenes are active before then!`;
 
-export const PASSAGE_DOWNTIME_MESSAGE = `It's that time again! Time for server downtime! Happening every 8 weeks (4 IC nights), it's time to spend your character's XP in your Character Story ticket and also to roll on Projects (8 rolls, remember). We'll see you in your tickets!`;
+export const PASSAGE_SUNRISE_MESSAGE = `The sun rises over New York City as creatures of the night retreat to their havens. Begin wrapping up your active scenes and post your experience submissions through the player portal!
 
-export function getPassageMessage(name: 'sunrise' | 'sunset' | 'downtime'): string {
+You may continue roleplaying in your current scene until the next night begins. If you wish to continue a scene beyond Sunrise, please move it to #to-be-continued.
+
+The next night begins on Monday at 2 PM ET!`;
+
+export const PASSAGE_DOWNTIME_MESSAGE = `It's that time again — **Time Skip** has begun! Happening every 8 weeks (4 IC nights), this is the time to spend your character's XP in your Character Story ticket and roll on Projects (8 rolls). We'll see you in your tickets — the next Night begins on Monday at 2 PM ET!`;
+
+export function getPassageMessage(name: 'sunrise' | 'sunset' | 'downtime' | 'midnight'): string {
   if (name === 'sunset') {
     return PASSAGE_SUNSET_MESSAGE;
+  }
+  if (name === 'midnight') {
+    return PASSAGE_MIDNIGHT_MESSAGE;
   }
   if (name === 'downtime') {
     return PASSAGE_DOWNTIME_MESSAGE;

@@ -65,6 +65,8 @@
                   <span class="badge bg-warning text-dark">staff</span>
                 {% elif crit.category == 'helper' %}
                   <span class="badge bg-success">helper</span>
+                {% elif crit.category == 'none' %}
+                  <span class="badge bg-dark border border-secondary">none</span>
                 {% else %}
                   <span class="badge bg-secondary">{{ crit.category }}</span>
                 {% endif %}
