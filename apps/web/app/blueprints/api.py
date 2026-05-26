@@ -764,3 +764,79 @@ def submit_spend():
         return jsonify({'error': str(exc)}), 400
 
     return jsonify({'ok': True, 'message': 'Spend request submitted', 'xpCost': xp_cost}), 201
+
+
+@bp.route('/characters', methods=['POST'])
+@require_bot_scope('write')
+@require_replay_protection
+@_limit('10 per minute')
+def create_character():
+    """Create and register a new approved character via the bot approval command.
+
+    Body (JSON):
+        character_name    — character name (must be unique)
+        discord_id        — player's Discord user ID (snowflake string)
+        discord_name      — player's display name
+        clan              — vampire clan
+        sect              — sect/faction
+        age_category      — Fledgling / Neonate / Ancilla / Elder
+        creation_xp       — starting XP (int, default 0)
+        cubby_channel_id  — Discord channel ID of the player's cubby (optional)
+        approver          — display name of staff who approved (for audit log)
+
+    Returns:
+        201  { ok: true, character_name }
+        400  { error: "..." }
+        409  { error: "Character already exists" }
+    """
+    backend = _require_db()
+    if backend:
+        return backend
+
+    data = request.get_json(silent=True) or {}
+    character_name = str(data.get('character_name', '')).strip()
+    discord_id     = str(data.get('discord_id', '')).strip()
+    discord_name   = str(data.get('discord_name', '')).strip()
+    clan           = str(data.get('clan', '')).strip()
+    sect           = str(data.get('sect', '')).strip()
+    age_category   = str(data.get('age_category', '')).strip()
+    approver       = str(data.get('approver', 'bot-api')).strip()
+    cubby_channel_id = str(data.get('cubby_channel_id', '')).strip()
+
+    try:
+        creation_xp = int(data.get('creation_xp', 0))
+    except (TypeError, ValueError):
+        creation_xp = 0
+
+    if not character_name:
+        return jsonify({'error': 'character_name is required'}), 400
+    if not discord_id or not DISCORD_ID_RE.fullmatch(discord_id):
+        return jsonify({'error': 'Invalid or missing discord_id'}), 400
+
+    if db_service.get_character(character_name):
+        return jsonify({'error': f'Character "{character_name}" already exists'}), 409
+
+    from app.models import Character
+    char = Character(
+        character_name=character_name,
+        player_discord=discord_id,
+        player_discord_name=discord_name,
+        clan=clan,
+        sect=sect,
+        age_category=age_category,
+        creation_xp=creation_xp,
+        active=True,
+    )
+    db_service.add_character(char)
+
+    if cubby_channel_id and DISCORD_ID_RE.fullmatch(cubby_channel_id):
+        db_service.save_player_profile(discord_id, cubby_channel_id)
+
+    db_service.log_action(
+        staff_user=f'bot-api:{approver}',
+        action_type='bot_character_approved',
+        target=character_name,
+        details=f'Approved via bot by {approver}: {clan} {age_category}, sect: {sect}',
+    )
+
+    return jsonify({'ok': True, 'character_name': character_name}), 201

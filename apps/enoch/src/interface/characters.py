@@ -10,8 +10,10 @@ from discord.ext import commands
 import enoch
 import ui
 from ctx import AppCtx
+from enoch.character.approve import approve as _approve_character
 from enoch.options import char_option, player_option
 from utils import decorators, not_on_lockdown
+from utils.permissions import require_admin_or_storyteller
 from utils.text import strtobool
 
 if TYPE_CHECKING:
@@ -60,6 +62,46 @@ class Characters(commands.Cog, name="Character Management"):
             await Enoch.character.create.launch_wizard(ctx, make_spc)
         except ValueError:
             await ui.embeds.error(ctx, f'Invalid value for `spc`: "{spc}".')
+
+    _CLANS = [
+        "Banu Haqim", "Brujah", "Caitiff", "Gangrel", "Hecata",
+        "Lasombra", "Malkavian", "Ministry", "Nosferatu", "Ravnos",
+        "Salubri", "Toreador", "Tremere", "Tzimisce", "Ventrue", "Thin-Blood",
+    ]
+    _SECTS = ["Camarilla", "Anarch", "Hecata", "Autarkis", "Sabbat"]
+    _AGES  = ["Fledgling", "Neonate", "Ancilla", "Elder"]
+
+    @character.command(name="approve")
+    @require_admin_or_storyteller()
+    @option("player",         description="The player being approved",    type=discord.Member)
+    @option("name",           description="Character name")
+    @option("clan",           description="Vampire clan",                 choices=[OptionChoice(c, c) for c in _CLANS])
+    @option("sect",           description="Sect or faction",              choices=[OptionChoice(s, s) for s in _SECTS])
+    @option("age_category",   description="Age category",                 choices=[OptionChoice(a, a) for a in _AGES])
+    @option("cubby",          description="Player's cubby channel",       type=discord.TextChannel, required=False, default=None)
+    @option("creation_xp",    description="Starting XP (default 0)",      type=int, required=False, default=0)
+    async def character_approve(
+        self,
+        ctx: AppCtx,
+        player: discord.Member,
+        name: str,
+        clan: str,
+        sect: str,
+        age_category: str,
+        cubby: discord.TextChannel | None,
+        creation_xp: int,
+    ):
+        """Approve a character: register in dashboard, assign roles, notify player."""
+        await _approve_character(
+            ctx=ctx,
+            player=player,
+            character_name=name,
+            clan=clan,
+            sect=sect,
+            age_category=age_category,
+            cubby=cubby,
+            creation_xp=creation_xp,
+        )
 
     @character.command(name="create")
     @not_on_lockdown()

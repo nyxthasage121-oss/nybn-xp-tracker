@@ -7,6 +7,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
+def _normalize_url(url: str) -> str:
+    url = url.strip().rstrip('/')
+    if not url.startswith(('http://', 'https://')):
+        url = 'http://' + url
+    return url + '/'
+
 BOT_TOKEN = os.environ.get("ENOCH_TOKEN", "")
 API_KEY = os.environ.get("ENOCH_API_TOKEN", "")
 DEBUG_GUILDS: Optional[list] = None
@@ -17,6 +24,8 @@ STORYTELLER_ROLE: int | None = int(_st) if (_st := os.environ.get("STORYTELLER_R
 PROFILE_SITE = os.environ.get("PROFILE_SITE", "http://localhost:5173/")
 SHOW_TEST_ROUTES = "SHOW_TEST_ROUTES" in os.environ
 APP_SITE = os.environ.get("APP_SITE", "http://localhost:5173")
+DASHBOARD_URL = _normalize_url(os.environ.get('DASHBOARD_URL', 'http://127.0.0.1:5001/'))
+DASHBOARD_API_TOKEN = os.environ.get('DASHBOARD_API_TOKEN', '')
 GUILD_CACHE_LOC = os.environ.get("GUILD_CACHE_LOC", "file::memory:?cache=shared")
 
 if PROFILE_SITE[-1] != "/":
