@@ -6,3 +6,5 @@
   Paradox Interactive AB / World of Darkness.
 - Contributors must not commit private credentials, OAuth secrets, access
   tokens, or personally sensitive user data.
+- Forked from the [MCbN XP Tracker](https://github.com/jkomg/mcbn-xp-tracker)
+  by Jason Kennedy. Used with permission under the MIT License.
