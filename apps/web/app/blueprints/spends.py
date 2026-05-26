@@ -6,6 +6,7 @@ from flask import (
 from app import db_service, sheets_sync
 from app.auth import require_staff, get_staff_user
 from app.xp_rules import validate_spend_request
+from app import enoch_sync
 
 bp = Blueprint('spends', __name__)
 
@@ -106,6 +107,19 @@ def approve(row_id):
                 f'for {verified_cost} XP. {notes}'
             ).strip(),
         )
+
+    # Mirror spend onto the Enoch character sheet
+    if verified_cost > 0:
+        enoch_sync.deduct_xp(
+            character_name=spend.character_name,
+            amount=verified_cost,
+            reason=f'{spend.spend_category}: {spend.trait_name} ({spend.current_dots}→{spend.new_dots})',
+        )
+    enoch_sync.update_trait(
+        character_name=spend.character_name,
+        trait_name=spend.trait_name,
+        new_rating=spend.new_dots,
+    )
 
     flash(
         f'Approved {spend.trait_name} spend for {spend.character_name} '

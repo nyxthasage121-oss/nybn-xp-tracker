@@ -112,6 +112,9 @@ class Config:
         TURSO_CONNECT_URL = ''
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
+    # Enoch bot integration — Discord guild ID for character sheet sync
+    ENOCH_GUILD_ID: int = int(os.environ.get('ENOCH_GUILD_ID', '0'))
+
     # Local-only diagnostics page (launchd/logs/access tail).
     LOCAL_STATUS_ENABLED = os.environ.get(
         'LOCAL_STATUS_ENABLED', 'false'

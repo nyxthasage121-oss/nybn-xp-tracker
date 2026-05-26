@@ -5,6 +5,7 @@ from flask import (
 )
 from app import db_service, sheets_sync
 from app.auth import require_staff, get_staff_user
+from app import enoch_sync
 
 bp = Blueprint('claims', __name__)
 
@@ -74,6 +75,14 @@ def approve(row_id):
         target=claim.character_name,
         details=f'Approved {approved_xp} XP for {claim.play_period}. {notes}'.strip(),
     )
+
+    # Mirror XP award onto the Enoch character sheet
+    if approved_xp > 0:
+        enoch_sync.award_xp(
+            character_name=claim.character_name,
+            amount=approved_xp,
+            reason=f'XP claim approved — {claim.play_period}',
+        )
 
     flash(f'Approved {approved_xp} XP for {claim.character_name}.', 'success')
     if result.get('cap_reached'):
