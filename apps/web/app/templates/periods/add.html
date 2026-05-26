@@ -14,18 +14,26 @@
     <div class="card-body">
         <form method="POST" action="{{ url_for('periods.add') }}">
             <div class="mb-3">
+                <label for="period_type" class="form-label">Type</label>
+                <select class="form-select" id="period_type" name="period_type">
+                    <option value="night" selected>Night (play period)</option>
+                    <option value="downtime">Downtime</option>
+                    <option value="timeskip">Timeskip</option>
+                </select>
+            </div>
+            <div class="mb-3" id="night-number-group">
                 <label for="night_number" class="form-label">Night Number</label>
                 <input type="number" class="form-control" id="night_number" name="night_number"
                        value="{{ next_night }}" required>
-                <small class="text-muted">Auto-incremented from the last period.</small>
+                <small class="text-muted">Auto-incremented from the last night. Set to 0 for downtime/timeskip.</small>
             </div>
             <div class="row g-3 mb-3">
                 <div class="col-6">
-                    <label for="start_date" class="form-label">Start Date (Tuesday noon CDT)</label>
+                    <label for="start_date" class="form-label">Start Date (Monday)</label>
                     <input type="date" class="form-control" id="start_date" name="start_date" required>
                 </div>
                 <div class="col-6">
-                    <label for="end_date" class="form-label">End Date (Sunday noon CDT)</label>
+                    <label for="end_date" class="form-label">End Date</label>
                     <input type="date" class="form-control" id="end_date" name="end_date" required>
                 </div>
             </div>

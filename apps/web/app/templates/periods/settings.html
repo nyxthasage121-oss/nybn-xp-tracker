@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}Chronicle Settings — NYbN XP Tracker{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0"><i class="bi bi-gear"></i> Chronicle Schedule Settings</h2>
+    <a href="{{ url_for('periods.list_periods') }}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Play Periods
+    </a>
+</div>
+
+<div class="row">
+  <div class="col-lg-6">
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-sliders"></i> Cycle Configuration</h5>
+      </div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('periods.settings') }}">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Server Start Date</label>
+            <input type="date" name="server_start_date" class="form-control"
+                   value="{{ settings.server_start_date }}" required>
+            <div class="form-text text-muted">The date NYbN was founded. Used for week-count reference only.</div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Timeskip Interval (weeks)</label>
+            <input type="number" name="timeskip_interval_weeks" class="form-control"
+                   min="1" max="52" value="{{ settings.timeskip_interval_weeks }}" required>
+            <div class="form-text text-muted">
+              How often a downtime/timeskip happens.
+              Currently <strong>{{ settings.timeskip_interval_weeks }} weeks</strong>
+              = every <strong>{{ nights_per_cycle }} night{{ 's' if nights_per_cycle != 1 }}</strong>.
+              <br>
+              <span class="text-warning"><i class="bi bi-info-circle"></i>
+              Changed from 4 weeks → 8 weeks on 3/16/2026.</span>
+            </div>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-6">
+              <label class="form-label fw-semibold">Night Duration (days)</label>
+              <input type="number" name="night_duration_days" class="form-control"
+                     min="1" max="60" value="{{ settings.night_duration_days }}" required>
+              <div class="form-text text-muted">How long each play night runs.</div>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold">Downtime Duration (days)</label>
+              <input type="number" name="downtime_duration_days" class="form-control"
+                     min="1" max="30" value="{{ settings.downtime_duration_days }}" required>
+              <div class="form-text text-muted">Length of downtime entries.</div>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Notes</label>
+            <textarea name="notes" class="form-control" rows="3"
+                      placeholder="e.g. Switched to 8-week cycle on 3/16/2026">{{ settings.notes }}</textarea>
+          </div>
+
+          <button type="submit" class="btn btn-danger">
+            <i class="bi bi-save"></i> Save Settings
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-info-circle"></i> How Auto-Generation Works</h5>
+      </div>
+      <div class="card-body text-muted small">
+        <p>When you click <strong>Generate</strong> on the Play Periods page:</p>
+        <ol>
+          <li>The system finds the latest end date in the DB.</li>
+          <li>The next night starts on the <strong>first Monday</strong> after that date.</li>
+          <li>It runs for <strong>{{ settings.night_duration_days }} days</strong>.</li>
+          <li>After every <strong>{{ nights_per_cycle }} night{{ 's' if nights_per_cycle != 1 }}</strong>
+              (~{{ settings.timeskip_interval_weeks }} weeks), a
+              <strong>{{ settings.downtime_duration_days }}-day downtime</strong> is inserted
+              before the next night.</li>
+          <li>Nights that already exist are skipped — safe to run multiple times.</li>
+        </ol>
+        <hr class="border-secondary">
+        <p class="mb-0">
+          <strong>Night numbering:</strong> Downtime/timeskip entries get night number 0.
+          Only play nights increment the counter.
+          NYbN is currently on <strong>Night {{ settings.server_start_date | replace('-', '') }}</strong>
+          — if the DB is empty, generation starts at Night 62.
+        </p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-magic"></i> Quick Generate</h5>
+      </div>
+      <div class="card-body">
+        <p class="text-muted small">Generate upcoming nights right from here:</p>
+        <form method="POST" action="{{ url_for('periods.generate') }}" class="d-flex gap-2">
+          <select name="count" class="form-select form-select-sm" style="width:auto">
+            <option value="4">4 nights</option>
+            <option value="6">6 nights</option>
+            <option value="8">8 nights</option>
+            <option value="12">12 nights</option>
+          </select>
+          <button type="submit" class="btn btn-danger btn-sm text-nowrap">
+            <i class="bi bi-magic"></i> Generate
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

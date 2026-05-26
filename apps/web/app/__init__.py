@@ -22,6 +22,36 @@ limiter: Limiter = None
 csrf: CSRFProtect = CSRFProtect()
 
 
+def _apply_schema_migrations() -> None:
+    """Lightweight inline migrations for columns added after initial release.
+
+    SQLAlchemy's create_all() creates missing *tables* but never adds columns
+    to existing tables. This function runs idempotent ALTER TABLE statements so
+    that both fresh installs and existing databases stay in sync.
+    """
+    from sqlalchemy import text  # noqa: PLC0415
+    migrations = [
+        # v2: night-cycle schedule fields
+        ("play_periods",       "period_type",            "ALTER TABLE play_periods ADD COLUMN period_type VARCHAR(20) DEFAULT 'night'"),
+        ("chronicle_settings", "timeskip_interval_weeks", None),  # table created by create_all — just verify
+    ]
+    for table, column, sql in migrations:
+        if sql is None:
+            continue
+        try:
+            # Check if column already exists (PRAGMA works for SQLite; harmless no-op on Turso)
+            result = db.session.execute(text(f"PRAGMA table_info({table})")).fetchall()
+            existing_cols = {row[1] for row in result}
+            if column not in existing_cols:
+                db.session.execute(text(sql))
+                db.session.commit()
+        except Exception:  # noqa: BLE001 — best-effort; non-SQLite engines may not support PRAGMA
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
+
+
 def _apply_local_session_cookie_defaults(app: Flask, session_cookie_secure_configured: bool | None = None) -> None:
     """Avoid secure-cookie OAuth loops for localhost HTTP development.
 
@@ -115,8 +145,10 @@ def create_app():
     # Create DB tables if they don't exist, then seed criteria on first run
     with app.app_context():
         db.create_all()
+        _apply_schema_migrations()
         db_service.seed_criteria_if_empty()
         db_service.seed_sites_if_empty()
+        db_service.seed_chronicle_settings_if_empty()
 
     # Register blueprints
     from .blueprints.dashboard import bp as dashboard_bp

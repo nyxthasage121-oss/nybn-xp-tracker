@@ -60,6 +60,16 @@ class PlayPeriod:
     session_number: int = 0
     submissions_open: bool = True
     active: bool = True
+    period_type: str = 'night'   # night | downtime | timeskip
+
+
+@dataclass
+class ChronicleSettings:
+    server_start_date: str = '2023-04-13'
+    timeskip_interval_weeks: int = 8
+    night_duration_days: int = 12
+    downtime_duration_days: int = 2
+    notes: str = ''
 
 
 @dataclass

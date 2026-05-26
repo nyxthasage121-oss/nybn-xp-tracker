@@ -47,6 +47,21 @@ class DbPlayPeriod(db.Model):
     session_number = db.Column(Integer, default=0)
     submissions_open = db.Column(Boolean, default=True)
     active = db.Column(Boolean, default=True)
+    # night = regular play period | downtime = short break | timeskip = in-game time jump
+    period_type = db.Column(String(20), default='night')
+
+
+class DbChronicleSettings(db.Model):
+    """Singleton row (id=1) — stores chronicle schedule configuration."""
+    __tablename__ = 'chronicle_settings'
+    id = db.Column(Integer, primary_key=True)
+    server_start_date = db.Column(String(10), default='2023-04-13')   # YYYY-MM-DD
+    # How many calendar weeks between timeskip/downtime events.
+    # Changed from 4 → 8 on 3/16/2026.
+    timeskip_interval_weeks = db.Column(Integer, default=8)
+    night_duration_days = db.Column(Integer, default=12)   # length of a play night
+    downtime_duration_days = db.Column(Integer, default=2) # length of the downtime gap
+    notes = db.Column(Text, default='')
 
 
 class DbCriteria(db.Model):

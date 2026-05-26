@@ -1,4 +1,9 @@
-"""Static game calendar data for the NYbN chronicle."""
+"""Chronicle calendar — driven from the PlayPeriod DB table.
+
+`get_calendar()` is called from the player blueprint and returns a list of
+dicts that the player portal calendar renders.  Falls back to an empty list
+if the DB has no periods yet (staff should add them via the admin panel).
+"""
 
 import sys
 from datetime import date
@@ -7,53 +12,55 @@ from datetime import date
 _DAY_FMT = '%#d' if sys.platform == 'win32' else '%-d'
 
 
-_RAW = [
-    # type, label, start, end, note
-    ('downtime', 'Downtime',  date(2025, 11, 30), date(2025, 12,  2), None),
-    ('night',    'Night 49',  date(2025, 12,  2), date(2025, 12, 14), None),
-    ('night',    'Night 50',  date(2025, 12, 16), date(2025, 12, 28), None),
-    ('night',    'Night 51',  date(2025, 12, 30), date(2026,  1, 11), 'New Year\'s'),
-    ('night',    'Night 52',  date(2026,  1, 13), date(2026,  1, 25), None),
-    ('downtime', 'Downtime',  date(2026,  1, 25), date(2026,  1, 27), None),
-    ('night',    'Night 53',  date(2026,  1, 27), date(2026,  2,  8), None),
-    ('night',    'Night 54',  date(2026,  2, 10), date(2026,  2, 22), None),
-    ('night',    'Night 55',  date(2026,  2, 24), date(2026,  3,  8), None),
-    ('night',    'Night 56',  date(2026,  3, 10), date(2026,  3, 22), None),
-    ('downtime', 'Downtime',  date(2026,  3, 22), date(2026,  3, 24), None),
-    ('night',    'Night 57',  date(2026,  3, 24), date(2026,  4,  5), None),
-    ('night',    'Night 58',  date(2026,  4,  7), date(2026,  4, 19), None),
-    ('night',    'Night 59',  date(2026,  4, 21), date(2026,  5,  3), None),
-    ('night',    'Night 60',  date(2026,  5,  5), date(2026,  5, 17), None),
-    ('downtime', 'Downtime',  date(2026,  5, 17), date(2026,  5, 19), None),
-    ('night',    'Night 61',  date(2026,  5, 19), date(2026,  5, 31), None),
-    ('night',    'Night 62',  date(2026,  6,  2), date(2026,  6, 14), None),
-    ('night',    'Night 63',  date(2026,  6, 16), date(2026,  6, 28), None),
-    ('night',    'Night 64',  date(2026,  6, 30), date(2026,  7, 12), None),
-    ('downtime', 'Downtime',  date(2026,  7, 12), date(2026,  7, 14), None),
-    ('night',    'Night 65',  date(2026,  7, 14), date(2026,  7, 26), None),
-    ('night',    'Night 66',  date(2026,  7, 28), date(2026,  8,  9), None),
-    ('night',    'Night 67',  date(2026,  8, 11), date(2026,  8, 23), None),
-    ('night',    'Night 68',  date(2026,  8, 25), date(2026,  9,  6), None),
-    ('downtime', 'Downtime',  date(2026,  9,  6), date(2026,  9,  8), None),
-    ('night',    'Night 69',  date(2026,  9,  8), date(2026,  9, 20), None),
-    ('night',    'Night 70',  date(2026,  9, 22), date(2026, 10,  4), None),
-    ('night',    'Night 71',  date(2026, 10,  6), date(2026, 10, 18), None),
-    ('night',    'Night 72',  date(2026, 10, 20), date(2026, 11,  1), None),
-    ('downtime', 'Downtime',  date(2026, 11,  1), date(2026, 11,  3), None),
-    ('night',    'Night 73',  date(2026, 11,  3), date(2026, 11, 15), None),
-    ('night',    'Night 74',  date(2026, 11, 17), date(2026, 11, 29), None),
-    ('night',    'Night 75',  date(2026, 12,  1), date(2026, 12, 13), None),
-    ('night',    'Night 76',  date(2026, 12, 15), date(2026, 12, 27), None),
-    ('downtime', 'Downtime',  date(2026, 12, 27), date(2026, 12, 29), None),
-    ('night',    'Night 77',  date(2026, 12, 29), date(2027,  1, 10), None),
-]
+def _fmt(d: date) -> str:
+    return d.strftime(f'%b {_DAY_FMT}')
 
 
-def get_calendar():
-    """Return all calendar entries with status computed for today."""
+def _parse_date(s: str) -> date | None:
+    """Parse YYYYMMDD or YYYY-MM-DD into a date object."""
+    s = s.replace('-', '').strip()
+    if len(s) == 8:
+        try:
+            return date(int(s[:4]), int(s[4:6]), int(s[6:8]))
+        except ValueError:
+            pass
+    return None
+
+
+def get_calendar() -> list[dict]:
+    """Return all play periods from the DB as calendar entries, most recent first.
+
+    Each entry has:
+        type        – 'night' | 'downtime' | 'timeskip'
+        label       – human-readable period name
+        note        – optional annotation (currently always None; reserved for STs)
+        start       – date object
+        end         – date object
+        start_fmt   – formatted string e.g. "May 19"
+        end_fmt     – formatted string e.g. "May 31"
+        status      – 'past' | 'current' | 'upcoming'
+        days_until  – int (upcoming only, else None)
+        days_left   – int (current only, else None)
+        night_number – int (0 for downtime/timeskip)
+    """
+    try:
+        from app.db import DbPlayPeriod  # noqa: PLC0415 — imported inside to avoid circular
+        rows = DbPlayPeriod.query.order_by(DbPlayPeriod.night_number.asc()).all()
+    except Exception:
+        return []
+
+    if not rows:
+        return []
+
     today = date.today()
     entries = []
-    for kind, label, start, end, note in _RAW:
+
+    for row in rows:
+        start = _parse_date(row.start_date or '')
+        end = _parse_date(row.end_date or '')
+        if not start or not end:
+            continue
+
         if end < today:
             status = 'past'
         elif start <= today <= end:
@@ -61,21 +68,21 @@ def get_calendar():
         else:
             status = 'upcoming'
 
-        # Days until start (for upcoming entries)
         days_until = (start - today).days if status == 'upcoming' else None
-        # Days remaining (for current entries)
         days_left = (end - today).days if status == 'current' else None
 
         entries.append({
-            'type':       kind,
-            'label':      label,
-            'note':       note,
-            'start':      start,
-            'end':        end,
-            'start_fmt':  start.strftime(f'%b {_DAY_FMT}'),
-            'end_fmt':    end.strftime(f'%b {_DAY_FMT}'),
-            'status':     status,
-            'days_until': days_until,
-            'days_left':  days_left,
+            'type':         row.period_type or 'night',
+            'label':        row.period_label or '',
+            'note':         None,
+            'start':        start,
+            'end':          end,
+            'start_fmt':    _fmt(start),
+            'end_fmt':      _fmt(end),
+            'status':       status,
+            'days_until':   days_until,
+            'days_left':    days_left,
+            'night_number': row.night_number or 0,
         })
+
     return entries

@@ -18,11 +18,13 @@ from app.db import (
     DbCharacter, DbPlayPeriod, DbCriteria,
     DbXPClaim, DbSpendRequest, DbLedgerEntry, DbAuditLog,
     DbCoterie, DbCoterieMembership, DbCoterieSpend, DbHuntingSite,
+    DbChronicleSettings,
 )
 from app.models import (
     Character, PlayPeriod, Criteria, XPClaim,
     SpendRequest, LedgerEntry, AuditEntry,
     Coterie, CoterieSpend, HuntingSite,
+    ChronicleSettings,
     NYBN_SEED_CRITERIA, NYBN_SEED_SITES,
 )
 
@@ -93,6 +95,7 @@ def _row_to_period(row: DbPlayPeriod) -> PlayPeriod:
         session_number=row.session_number or 0,
         submissions_open=bool(row.submissions_open),
         active=bool(row.active),
+        period_type=row.period_type or 'night',
     )
 
 
@@ -432,6 +435,7 @@ class DBService:
             session_number=period.session_number,
             submissions_open=period.submissions_open,
             active=period.active,
+            period_type=getattr(period, 'period_type', 'night') or 'night',
         )
         db.session.add(row)
         db.session.commit()
@@ -464,7 +468,162 @@ class DBService:
         periods = self.get_all_periods()
         if not periods:
             return 1
-        return max(p.night_number for p in periods) + 1
+        nights = [p for p in periods if p.period_type == 'night']
+        if not nights:
+            return max(p.night_number for p in periods) + 1
+        return max(p.night_number for p in nights) + 1
+
+    # ── Chronicle Settings ────────────────────────────────────────────────────
+
+    def get_chronicle_settings(self) -> ChronicleSettings:
+        row = DbChronicleSettings.query.get(1)
+        if not row:
+            return ChronicleSettings()
+        return ChronicleSettings(
+            server_start_date=row.server_start_date or '2023-04-13',
+            timeskip_interval_weeks=row.timeskip_interval_weeks or 8,
+            night_duration_days=row.night_duration_days or 12,
+            downtime_duration_days=row.downtime_duration_days or 2,
+            notes=row.notes or '',
+        )
+
+    def save_chronicle_settings(self, settings: ChronicleSettings) -> None:
+        row = DbChronicleSettings.query.get(1)
+        if not row:
+            row = DbChronicleSettings(id=1)
+            db.session.add(row)
+        row.server_start_date = settings.server_start_date
+        row.timeskip_interval_weeks = settings.timeskip_interval_weeks
+        row.night_duration_days = settings.night_duration_days
+        row.downtime_duration_days = settings.downtime_duration_days
+        row.notes = settings.notes
+        db.session.commit()
+
+    def seed_chronicle_settings_if_empty(self) -> None:
+        """Create the default settings row on first run."""
+        if not DbChronicleSettings.query.get(1):
+            self.save_chronicle_settings(ChronicleSettings())
+
+    def generate_upcoming_nights(self, count: int = 4) -> list[PlayPeriod]:
+        """Generate `count` upcoming nights (plus any required downtime entries)
+        starting from the last period in the DB.
+
+        Rules:
+        - Nights start on Monday.
+        - Each night is `night_duration_days` long.
+        - After every (timeskip_interval_weeks // 2) nights, insert a downtime.
+        - The downtime is `downtime_duration_days` long, also starting on Monday.
+        - Returns the list of PlayPeriod objects that were created.
+        """
+        from datetime import date as date_cls
+
+        settings = self.get_chronicle_settings()
+        night_len = settings.night_duration_days
+        dt_len = settings.downtime_duration_days
+        nights_per_cycle = max(1, settings.timeskip_interval_weeks // 2)
+
+        all_periods = self.get_all_periods()
+        existing_labels = {p.period_label for p in all_periods}
+
+        # Find the latest end date across all existing periods
+        def _parse(s: str):
+            s = s.replace('-', '')
+            if len(s) == 8:
+                try:
+                    return datetime.strptime(s, '%Y%m%d').date()
+                except ValueError:
+                    pass
+            return None
+
+        last_end: date_cls | None = None
+        last_night_num = 0
+        nights_since_downtime = 0
+
+        if all_periods:
+            for p in sorted(all_periods, key=lambda x: x.night_number):
+                ed = _parse(p.end_date)
+                if ed and (last_end is None or ed > last_end):
+                    last_end = ed
+                if p.period_type == 'night':
+                    last_night_num = max(last_night_num, p.night_number)
+            # Count how many consecutive nights since the last downtime/timeskip
+            sorted_periods = sorted(all_periods, key=lambda x: x.night_number)
+            for p in reversed(sorted_periods):
+                if p.period_type in ('downtime', 'timeskip'):
+                    break
+                if p.period_type == 'night':
+                    nights_since_downtime += 1
+
+        # If no periods exist at all, start at Night 62 the Monday after today
+        if last_end is None:
+            last_end = date_cls.today()
+            last_night_num = 61  # NYbN is on Night 61 currently
+
+        next_night_num = last_night_num + 1
+        created: list[PlayPeriod] = []
+        nights_generated = 0
+
+        while nights_generated < count:
+            # Next start = day after last_end, snapped to Monday
+            candidate = last_end + timedelta(days=1)
+            while candidate.weekday() != 0:   # 0 = Monday
+                candidate += timedelta(days=1)
+            next_start = candidate
+
+            # Should we insert a downtime first?
+            if nights_since_downtime > 0 and nights_since_downtime % nights_per_cycle == 0:
+                # Insert a downtime period
+                dt_end = next_start + timedelta(days=dt_len - 1)
+                dt_label = f'Downtime — {next_start.strftime("%b %-d") if __import__("sys").platform != "win32" else next_start.strftime("%b %#d")}'
+                if dt_label not in existing_labels:
+                    dt_period = PlayPeriod(
+                        period_label=dt_label,
+                        night_number=0,
+                        start_date=next_start.strftime('%Y%m%d'),
+                        end_date=dt_end.strftime('%Y%m%d'),
+                        session_number=0,
+                        submissions_open=False,
+                        active=True,
+                        period_type='downtime',
+                    )
+                    self.create_period(dt_period)
+                    created.append(dt_period)
+                    existing_labels.add(dt_label)
+                last_end = dt_end
+                nights_since_downtime = 0
+                continue  # re-loop to place the next night after the downtime
+
+            # Create a regular night
+            night_end = next_start + timedelta(days=night_len - 1)
+            # Format dates without leading zeros (cross-platform)
+            _platform = __import__('sys').platform
+            _dfmt = '%#d' if _platform == 'win32' else '%-d'
+            start_fmt = next_start.strftime(f'%b {_dfmt}')
+            end_fmt = night_end.strftime(f'%b {_dfmt}')
+            label = f'Night {next_night_num} - {start_fmt} - {end_fmt}'
+
+            if label not in existing_labels:
+                period = PlayPeriod(
+                    period_label=label,
+                    night_number=next_night_num,
+                    start_date=next_start.strftime('%Y%m%d'),
+                    end_date=night_end.strftime('%Y%m%d'),
+                    session_number=next_night_num,
+                    submissions_open=True,
+                    active=True,
+                    period_type='night',
+                )
+                self.create_period(period)
+                created.append(period)
+                existing_labels.add(label)
+
+            last_end = night_end
+            last_night_num = next_night_num
+            next_night_num += 1
+            nights_since_downtime += 1
+            nights_generated += 1
+
+        return created
 
     def auto_create_next_period_if_due(
         self,

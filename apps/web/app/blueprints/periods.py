@@ -5,7 +5,7 @@ from flask import (
 )
 from app import db_service, sheets_sync
 from app.auth import require_staff, get_staff_user
-from app.models import PlayPeriod
+from app.models import PlayPeriod, ChronicleSettings
 
 bp = Blueprint('periods', __name__)
 
@@ -32,15 +32,15 @@ def add_form():
 @require_staff
 def add():
     """Create a new play period."""
+    period_type = request.form.get('period_type', 'night').strip()
     night_number = int(request.form.get('night_number', 0))
     start_date = request.form.get('start_date', '')
     end_date = request.form.get('end_date', '')
     session_number = int(request.form.get('session_number', 0))
 
-    # Build the period label: "Night XX - MM/DD - MM/DD"
+    # Build the period label
     start_short = start_date[5:].replace('-', '/') if start_date else ''
     end_short = end_date[5:].replace('-', '/') if end_date else ''
-    # Remove leading zeros: 01/27 -> 1/27
     if start_short:
         parts = start_short.split('/')
         start_short = f'{int(parts[0])}/{int(parts[1])}'
@@ -48,16 +48,22 @@ def add():
         parts = end_short.split('/')
         end_short = f'{int(parts[0])}/{int(parts[1])}'
 
-    label = f'Night {night_number} - {start_short} - {end_short}'
+    if period_type == 'night':
+        label = f'Night {night_number} - {start_short} - {end_short}'
+    elif period_type == 'downtime':
+        label = f'Downtime - {start_short} - {end_short}'
+    else:
+        label = f'Timeskip - {start_short} - {end_short}'
 
     period = PlayPeriod(
         period_label=label,
-        night_number=night_number,
+        night_number=night_number if period_type == 'night' else 0,
         start_date=start_date.replace('-', ''),
         end_date=end_date.replace('-', ''),
         session_number=session_number,
-        submissions_open=True,
+        submissions_open=(period_type == 'night'),
         active=True,
+        period_type=period_type,
     )
 
     db_service.create_period(period)
@@ -176,4 +182,69 @@ def toggle_active(label):
 
     status = 'activated' if new_value == 'TRUE' else 'deactivated'
     flash(f'{label} {status} in form dropdowns.', 'success')
+    return redirect(url_for('periods.list_periods'))
+
+
+@bp.route('/settings', methods=['GET', 'POST'])
+@require_staff
+def settings():
+    """View/edit chronicle schedule settings."""
+    current = db_service.get_chronicle_settings()
+
+    if request.method == 'POST':
+        try:
+            new_settings = ChronicleSettings(
+                server_start_date=request.form.get('server_start_date', '').strip() or '2023-04-13',
+                timeskip_interval_weeks=int(request.form.get('timeskip_interval_weeks', 8)),
+                night_duration_days=int(request.form.get('night_duration_days', 12)),
+                downtime_duration_days=int(request.form.get('downtime_duration_days', 2)),
+                notes=request.form.get('notes', '').strip(),
+            )
+            db_service.save_chronicle_settings(new_settings)
+            db_service.log_action(
+                staff_user=get_staff_user(),
+                action_type='update_chronicle_settings',
+                target='Chronicle Settings',
+                details=(
+                    f'Timeskip every {new_settings.timeskip_interval_weeks} weeks, '
+                    f'night={new_settings.night_duration_days}d, '
+                    f'downtime={new_settings.downtime_duration_days}d'
+                ),
+            )
+            flash('Chronicle settings saved.', 'success')
+        except (ValueError, TypeError) as exc:
+            flash(f'Invalid value: {exc}', 'danger')
+        return redirect(url_for('periods.settings'))
+
+    nights_per_cycle = max(1, current.timeskip_interval_weeks // 2)
+    return render_template(
+        'periods/settings.html',
+        settings=current,
+        nights_per_cycle=nights_per_cycle,
+    )
+
+
+@bp.route('/generate', methods=['POST'])
+@require_staff
+def generate():
+    """Auto-generate upcoming nights based on chronicle settings."""
+    try:
+        count = max(1, min(12, int(request.form.get('count', 4))))
+    except (ValueError, TypeError):
+        count = 4
+
+    created = db_service.generate_upcoming_nights(count)
+
+    if created:
+        labels = ', '.join(p.period_label for p in created)
+        flash(f'Generated {len(created)} period(s): {labels}', 'success')
+        db_service.log_action(
+            staff_user=get_staff_user(),
+            action_type='generate_periods',
+            target='Play Periods',
+            details=f'Auto-generated {len(created)} periods: {labels}',
+        )
+    else:
+        flash('No new periods generated (they may already exist).', 'info')
+
     return redirect(url_for('periods.list_periods'))
