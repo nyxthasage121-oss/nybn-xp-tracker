@@ -1,0 +1,43 @@
+# Environment
+.env
+**/.env
+venv/
+.venv/
+**/venv/
+**/.venv/
+venv-*-backup*/
+
+# Credentials
+credentials/*.json
+
+# Python
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+node_modules/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+.run/
+apps/bot/data/*.json
+!apps/bot/data/.gitkeep
+
+# Google Cloud SDK (installed locally, not part of the project)
+google-cloud-sdk/
+google-cloud-cli-*.tar.gz
+
+**/credentials/*.json
+
+# Local unrelated sandbox repo
+/tg-local/

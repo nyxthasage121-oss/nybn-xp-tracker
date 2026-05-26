@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-3 mb-4 flex-wrap">
+    <a href="{{ url_for('spends.pending') }}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Pending Spends
+    </a>
+    <div>
+        <h2 class="mb-0 d-inline">{{ spend.character_name }}</h2>
+        <span class="badge bg-secondary ms-2">{{ spend.spend_category }}</span>
+    </div>
+</div>
+
+<div class="row g-4">
+
+    <!-- Left: spend details -->
+    <div class="col-lg-7">
+
+        <!-- Trait card -->
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
+                    <div>
+                        <div class="text-muted small mb-1" style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.08em;">Trait</div>
+                        <h4 class="mb-0">{{ spend.trait_name }}</h4>
+                    </div>
+                    {% if spend.current_dots is not none and spend.new_dots %}
+                    <div class="ms-auto text-end">
+                        <div class="text-muted small mb-1" style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.08em;">Progression</div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="text-muted">{{ spend.current_dots }}</span>
+                            <span class="text-muted">→</span>
+                            <span class="fw-bold">{{ spend.new_dots }}</span>
+                            <div class="dot-pips ms-1">
+                                {% for i in range(1, 6) %}
+                                <span class="dot-pip {% if i <= spend.new_dots | int %}filled{% endif %}"></span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="row g-3 text-center">
+                    <div class="col">
+                        <div class="text-muted small">Category</div>
+                        <div class="fw-500">{{ spend.spend_category }}</div>
+                    </div>
+                    <div class="col">
+                        <div class="text-muted small">Player Cost</div>
+                        <div class="fw-bold">{{ spend.xp_cost }} XP</div>
+                    </div>
+                    <div class="col">
+                        <div class="text-muted small">Available XP</div>
+                        <div class="fw-bold {% if available_xp >= validation.correct_cost %}text-success{% else %}text-danger{% endif %}">
+                            {{ available_xp }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Justification -->
+        {% if spend.justification %}
+        <div class="card mb-3">
+            <div class="card-header py-2">
+                <small class="text-muted" style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.08em;">
+                    <i class="bi bi-chat-left-quote"></i> Justification
+                </small>
+            </div>
+            <div class="card-body">
+                <p class="mb-0" style="font-style:italic;color:#ccc;word-break:break-word;">
+                    {{ spend.justification | urlize(target='_blank', rel='noopener noreferrer nofollow') }}
+                </p>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Cost validation -->
+        <div class="card mb-3">
+            <div class="card-header py-2">
+                <small class="text-muted" style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.08em;">
+                    <i class="bi bi-calculator"></i> Cost Validation
+                </small>
+            </div>
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-3 mb-2 flex-wrap">
+                    <span class="{% if validation.matches %}cost-match{% else %}cost-mismatch{% endif %} fs-5">
+                        {% if validation.matches %}
+                        <i class="bi bi-check-circle-fill"></i> {{ validation.correct_cost }} XP
+                        {% else %}
+                        <i class="bi bi-exclamation-triangle-fill"></i> Should be {{ validation.correct_cost }} XP
+                        {% endif %}
+                    </span>
+                    <span class="badge {% if available_xp >= validation.correct_cost %}bg-success{% else %}bg-danger{% endif %}">
+                        {% if available_xp >= validation.correct_cost %}Can afford{% else %}Insufficient XP{% endif %}
+                    </span>
+                </div>
+                <p class="text-muted small mb-0">{{ validation.description }}</p>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Right: sticky approve/deny -->
+    <div class="col-lg-5">
+        <div class="review-sticky">
+
+            <!-- Character quick-link -->
+            <div class="card mb-3" style="background:#16213e;border-color:rgba(255,255,255,0.08);">
+                <div class="card-body py-2 px-3 d-flex justify-content-between align-items-center">
+                    <span class="text-muted small">{{ spend.character_name }}</span>
+                    <a href="{{ url_for('roster.detail', name=spend.character_name) }}"
+                       class="btn btn-sm btn-outline-secondary" target="_blank">
+                        <i class="bi bi-person-lines-fill"></i> View Roster
+                    </a>
+                </div>
+            </div>
+
+            <!-- Approve -->
+            <div class="card mb-3 border-success">
+                <div class="card-header bg-success bg-opacity-25">
+                    <h6 class="mb-0"><i class="bi bi-check-circle"></i> Approve Spend</h6>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('spends.approve', row_id=spend.row_index) }}">
+                        <div class="mb-3">
+                            <label for="verified_cost" class="form-label small">Verified Cost (XP)</label>
+                            <input type="number" class="form-control" id="verified_cost"
+                                   name="verified_cost" value="{{ validation.correct_cost }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="notes" class="form-label small">Notes <span class="text-muted">(optional)</span></label>
+                            <textarea class="form-control" id="notes" name="notes" rows="2"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-success w-100" data-loading-text="Approving…">
+                            <i class="bi bi-check-lg"></i> Approve
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Deny -->
+            <div class="card border-danger">
+                <div class="card-header bg-danger bg-opacity-25">
+                    <h6 class="mb-0"><i class="bi bi-x-circle"></i> Deny Spend</h6>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('spends.deny', row_id=spend.row_index) }}">
+                        <div class="mb-3">
+                            <label for="deny_notes" class="form-label small">Reason <span class="text-muted">(required)</span></label>
+                            <textarea class="form-control" id="deny_notes" name="notes" rows="2" required></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-danger w-100 no-spinner"
+                                data-confirm="Deny this spend request?"
+                                data-loading-text="Denying…">
+                            <i class="bi bi-x-lg"></i> Deny
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2>Spend History</h2>
+
+  <div class="mb-3">
+    <input type="text" id="searchInput" class="form-control" placeholder="Search spends...">
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-dark table-striped table-hover">
+      <thead>
+        <tr>
+          <th>Character</th>
+          <th class="d-none d-md-table-cell">Category</th>
+          <th>Trait</th>
+          <th class="d-none d-sm-table-cell">Dots</th>
+          <th class="d-none d-md-table-cell">Player Cost</th>
+          <th class="d-none d-md-table-cell">Verified Cost</th>
+          <th>Status</th>
+          <th class="d-none d-lg-table-cell">Reviewed By</th>
+        </tr>
+      </thead>
+      <tbody id="spendTableBody">
+        {% for spend in spends %}
+        <tr>
+          <td>{{ spend.character_name }}</td>
+          <td class="d-none d-md-table-cell">{{ spend.category }}</td>
+          <td>{{ spend.trait_name }}</td>
+          <td class="d-none d-sm-table-cell">{{ spend.current_dots }} → {{ spend.new_dots }}</td>
+          <td class="d-none d-md-table-cell">{{ spend.player_cost }}</td>
+          <td class="d-none d-md-table-cell">{{ spend.verified_cost or '-' }}</td>
+          <td>
+            {% if spend.status == 'approved' %}
+              <span class="badge bg-success">Approved</span>
+            {% elif spend.status == 'denied' %}
+              <span class="badge bg-danger">Denied</span>
+            {% elif spend.status == 'pending' %}
+              <span class="badge bg-warning">Pending</span>
+            {% else %}
+              <span class="badge bg-secondary">{{ spend.status }}</span>
+            {% endif %}
+          </td>
+          <td class="d-none d-lg-table-cell">{{ spend.reviewed_by or '-' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+document.getElementById('searchInput').addEventListener('keyup', function() {
+  const searchValue = this.value.toLowerCase();
+  const rows = document.querySelectorAll('#spendTableBody tr');
+
+  rows.forEach(row => {
+    const text = row.textContent.toLowerCase();
+    row.style.display = text.includes(searchValue) ? '' : 'none';
+  });
+});
+</script>
+{% endblock %}

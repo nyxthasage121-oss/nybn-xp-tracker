@@ -1,0 +1,953 @@
+{% extends "player/base.html" %}
+
+{% block title %}{{ char.character_name }} — XP{% endblock %}
+
+{% block content %}
+<!-- Character Hero -->
+{% set pct = ((earned_xp / total_xp) * 100)|round|int if total_xp > 0 else 0 %}
+{% set clan_slug = char.clan | lower | replace(' ', '-') if char.clan else '' %}
+<div class="char-hero mb-4 has-clan-color clan-{{ clan_slug }}">
+    {% if clan_slug %}
+    <img src="{{ url_for('static', filename='images/symbols/' + clan_slug + '.png') }}"
+         class="char-hero-clan-symbol" aria-hidden="true"
+         onerror="this.style.display='none'">
+    {% endif %}
+    <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+        <div class="flex-grow-1">
+            <h1 class="char-hero-name">{{ char.character_name }}</h1>
+            <p class="char-hero-meta">
+                {%- if char.clan -%}{{ char.clan }}{%- endif -%}
+                {%- if char.sect and char.sect != 'NA' %}
+                <img src="{{ url_for('static', filename='images/symbols/' + char.sect | lower | replace(' ', '-') + '.png') }}"
+                     class="hero-sect-symbol" aria-hidden="true"
+                     onerror="this.style.display='none'">
+                · {{ char.sect }}
+                {%- endif -%}
+                {%- if char.age_category %}
+                <img src="{{ url_for('static', filename='images/symbols/' + char.age_category | lower | replace(' ', '-') + '.png') }}"
+                     class="hero-sect-symbol" aria-hidden="true"
+                     onerror="this.style.display='none'">
+                · {{ char.age_category }}
+                {%- endif -%}
+            </p>
+            <div class="d-flex gap-4 flex-wrap mb-2">
+                <div>
+                    <div class="char-stat-val">{{ total_xp }}</div>
+                    <div class="char-stat-lbl">Total XP</div>
+                </div>
+                <div>
+                    <div class="char-stat-val text-danger">{{ total_spends }}</div>
+                    <div class="char-stat-lbl">Spent</div>
+                </div>
+                <div>
+                    <div class="char-stat-val {% if available_xp > 0 %}text-success{% elif available_xp < 0 %}text-danger{% endif %}">{{ available_xp }}</div>
+                    <div class="char-stat-lbl">Available</div>
+                </div>
+            </div>
+            {% if total_xp > 0 %}
+            <div class="xp-progress-bar">
+                <div class="fill" style="width: {{ pct }}%;"></div>
+            </div>
+            {% endif %}
+        </div>
+        <div class="text-end flex-shrink-0">
+            {% if char.age_category %}
+            <img src="{{ url_for('static', filename='images/symbols/' + char.age_category | lower | replace(' ', '-') + '.png') }}"
+                 class="char-hero-age-symbol" aria-hidden="true"
+                 onerror="this.style.display='none'">
+            {% endif %}
+        </div>
+    </div>
+    <div class="mt-3 d-none d-md-block">
+        <a href="{{ url_for('player.my_characters') }}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> My Characters
+        </a>
+    </div>
+</div>
+
+<!-- Pending notifications -->
+{% if pending_claims_count > 0 or pending_spends_count > 0 %}
+<div class="alert alert-info">
+    <i class="bi bi-hourglass-split"></i>
+    {% if pending_claims_count > 0 %}
+        <strong>{{ pending_claims_count }}</strong> XP claim{{ 's' if pending_claims_count != 1 }} pending review.
+    {% endif %}
+    {% if pending_spends_count > 0 %}
+        <strong>{{ pending_spends_count }}</strong> spend request{{ 's' if pending_spends_count != 1 }} pending review.
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- ═══ Submission Forms ═══ -->
+<div class="row mb-4">
+
+    <!-- XP Claim Form -->
+    <div class="col-lg-6 mb-3">
+        {% set ns_claim = namespace(has_unclaimed=false) %}
+        {% for p in open_periods %}
+            {% if p.period_label not in claimed_periods %}
+                {% set ns_claim.has_unclaimed = true %}
+            {% endif %}
+        {% endfor %}
+        <div class="card border-success">
+            <div class="card-header bg-success bg-opacity-25" data-bs-toggle="collapse" data-bs-target="#claim-form" role="button" style="cursor: pointer;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-plus-circle"></i> Claim XP
+                        <i class="bi bi-chevron-down ms-2" style="font-size:0.8rem;"></i>
+                    </h5>
+                    {% if open_periods %}
+                    <div class="d-flex gap-1 flex-wrap justify-content-end">
+                        {% for p in open_periods %}
+                        <span class="period-pill {% if p.period_label in claimed_periods %}claimed{% else %}unclaimed{% endif %}">
+                            {% if p.period_label in claimed_periods %}<i class="bi bi-check2"></i>{% else %}<i class="bi bi-circle"></i>{% endif %}
+                            {{ p.period_label }}
+                        </span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="collapse{% if ns_claim.has_unclaimed %} show{% endif %}" id="claim-form">
+                <div class="card-body">
+                    {% if open_periods %}
+                    <form method="POST" action="{{ url_for('player.submit_claim', name=char.character_name) }}">
+                        <!-- Period Selector -->
+                        <div class="mb-3">
+                            <label for="play_period" class="form-label fw-bold">Play Period</label>
+                            <select class="form-select" name="play_period" id="play_period" required>
+                                <option value="">Select a period...</option>
+                                {% for p in open_periods %}
+                                <option value="{{ p.period_label }}"
+                                    {% if p.period_label in claimed_periods %}disabled{% endif %}>
+                                    {{ p.period_label }}
+                                    {% if p.period_label in claimed_periods %} (already claimed){% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- XP Categories -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">XP Categories <small class="text-muted">(1 XP each, 7 max)</small></label>
+
+                            {% set cats = [
+                                ('posted_once', 'Posted at least once during this play period'),
+                                ('hunting_awakening', 'Posted a Hunting and/or Awakening scene'),
+                                ('scene_with_another', 'Participated in a scene with another character'),
+                                ('conflict', 'Engaged in conflict with another character'),
+                                ('combat', 'Engaged in combat with another character'),
+                                ('unmitigated_stain', 'Took an unmitigated Stain'),
+                            ] %}
+
+                            {% for key, label in cats %}
+                            <div class="card bg-dark mb-2">
+                                <div class="card-body py-2 px-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input claim-cat-check" type="checkbox"
+                                               name="{{ key }}" id="{{ key }}" value="1"
+                                               data-link-target="{{ key }}_link_group">
+                                        <label class="form-check-label" for="{{ key }}">{{ label }}</label>
+                                    </div>
+                                    <div class="mt-2 d-none" id="{{ key }}_link_group">
+                                        <input type="url" class="form-control form-control-sm claim-link-input"
+                                               name="{{ key }}_link" placeholder="Discord post link (required)"
+                                               pattern="https?://.*">
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+
+                            <!-- Wildcard / Bonus XP -->
+                            <div class="card bg-dark mb-2 border-warning border-opacity-50">
+                                <div class="card-body py-2 px-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input claim-cat-check" type="checkbox"
+                                               name="wildcard" id="wildcard" value="1"
+                                               data-link-target="wildcard_link_group">
+                                        <label class="form-check-label text-warning" for="wildcard">
+                                            <i class="bi bi-star-fill"></i> Wildcard / Bonus XP
+                                        </label>
+                                    </div>
+                                    <div class="mt-2 d-none" id="wildcard_link_group">
+                                        <div class="row g-2 mb-2">
+                                          <div class="col">
+                                            <input type="text" class="form-control form-control-sm wildcard-reason-input"
+                                                   name="wildcard_reason" placeholder="Reason for bonus XP (required)">
+                                          </div>
+                                          <div class="col-auto" style="width: 90px;">
+                                            <input type="number" class="form-control form-control-sm wildcard-amount-input"
+                                                   name="wildcard_amount" min="1" max="20" value="1"
+                                                   placeholder="XP" title="Number of XP">
+                                          </div>
+                                        </div>
+                                        <input type="url" class="form-control form-control-sm claim-link-input"
+                                               name="wildcard_link" placeholder="Discord post link (required)"
+                                               pattern="https?://.*">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                            <span class="text-muted" id="claim-xp-count">0 XP selected</span>
+                            <button type="submit" class="btn btn-success" id="claim-submit-btn" disabled>
+                                <i class="bi bi-send"></i> Submit XP Claim
+                            </button>
+                        </div>
+                    </form>
+                    {% else %}
+                    <p class="text-muted mb-0">No play periods are currently open for XP claims.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Spend Request Form -->
+    <div class="col-lg-6 mb-3">
+        <div class="card border-danger">
+            <div class="card-header bg-danger bg-opacity-25" data-bs-toggle="collapse" data-bs-target="#spend-form" role="button" style="cursor: pointer;">
+                <h5 class="mb-0">
+                    <i class="bi bi-cart-plus"></i> Request XP Spend
+                    <i class="bi bi-chevron-down float-end"></i>
+                </h5>
+            </div>
+            <div class="collapse" id="spend-form">
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('player.submit_spend', name=char.character_name) }}">
+
+                        <!-- Category -->
+                        <div class="mb-3">
+                            <label for="spend_category" class="form-label fw-bold">Category</label>
+                            <select class="form-select" name="spend_category" id="spend_category" required>
+                                <option value="">Select a category...</option>
+                                {% for cat in spend_categories %}
+                                <option value="{{ cat }}">{{ cat }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Trait Name -->
+                        <div class="mb-3">
+                            <label for="trait_name" class="form-label fw-bold">Trait Name</label>
+                            <input type="text" class="form-control" name="trait_name" id="trait_name"
+                                   placeholder="e.g., Strength, Dominate, Allies" required>
+                        </div>
+
+                        <!-- Dots Row -->
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <label for="current_dots" class="form-label fw-bold">Current Dots</label>
+                                <input type="number" class="form-control" name="current_dots" id="current_dots"
+                                       min="0" max="5" value="0" required>
+                            </div>
+                            <div class="col-6">
+                                <label for="new_dots" class="form-label fw-bold">New Dots</label>
+                                <input type="number" class="form-control" name="new_dots" id="new_dots"
+                                       min="1" max="5" value="1" required>
+                            </div>
+                        </div>
+
+                        <!-- In-Clan checkbox (hidden unless Discipline) -->
+                        <div class="mb-3 d-none" id="in-clan-group">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="is_in_clan" id="is_in_clan" value="1">
+                                <label class="form-check-label" for="is_in_clan">This is an In-Clan Discipline</label>
+                            </div>
+                        </div>
+
+                        <!-- Live Cost Preview -->
+                        <div class="alert alert-secondary py-2 mb-3" id="spend-cost-preview">
+                            <strong>Estimated Cost:</strong> <span id="spend-cost-value">—</span> XP
+                            <span class="ms-2 text-muted" id="spend-cost-formula"></span>
+                        </div>
+
+                        <!-- Available XP Warning -->
+                        {% if available_xp is defined %}
+                        <input type="hidden" id="available-xp" value="{{ available_xp }}">
+                        <div class="alert alert-warning py-2 mb-3 d-none" id="spend-xp-warning">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            <span id="spend-xp-warning-text"></span>
+                        </div>
+                        {% endif %}
+
+                        <!-- Justification -->
+                        <div class="mb-3">
+                            <label for="justification" class="form-label fw-bold">Justification / RP Rationale</label>
+                            <textarea class="form-control" name="justification" id="justification" rows="3"
+                                      placeholder="Explain the in-character reason for this purchase..." required></textarea>
+                        </div>
+
+                        <div class="text-end">
+                            <button type="submit" class="btn btn-danger">
+                                <i class="bi bi-send"></i> Submit Spend Request
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Approved Claims History -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-journal-check"></i> XP Claims History</h5>
+    </div>
+    <div class="card-body">
+        {% if approved_claims %}
+        <div class="table-responsive">
+            <table class="table table-dark table-striped mb-0">
+                <thead>
+                    <tr>
+                        <th>Period</th>
+                        <th>XP Awarded</th>
+                        <th>Date</th>
+                        {% if approved_claims[0].st_notes is defined %}
+                        <th>ST Notes</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for claim in approved_claims %}
+                    <tr>
+                        <td>{{ claim.play_period }}</td>
+                        <td>
+                            <span class="badge bg-success">+{{ claim.approved_xp }}</span>
+                        </td>
+                        <td>{{ claim.review_date or claim.timestamp }}</td>
+                        <td>{{ claim.st_notes if claim.st_notes and not claim.st_notes.startswith('STAFF ADJUSTMENT') else '' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">No approved XP claims yet.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Approved Spends History — Character Sheet View -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-cart-check"></i> Approved Spends</h5>
+    </div>
+    <div class="card-body">
+        {% if approved_spends %}
+        {% for category, spends in approved_spends | groupby('spend_category') %}
+        <div class="spend-category-heading">{{ category }}</div>
+        {% for spend in spends %}
+        <div class="spend-entry">
+            <div class="spend-trait-name">{{ spend.trait_name }}</div>
+            {% if spend.new_dots %}
+            <div class="dot-pips" title="{{ spend.current_dots or 0 }} → {{ spend.new_dots }}">
+                {% for i in range(1, 6) %}
+                <span class="dot-pip {% if i <= spend.new_dots | int %}filled{% endif %}"></span>
+                {% endfor %}
+            </div>
+            {% endif %}
+            <div class="spend-cost-badge">−{{ spend.verified_cost }} XP</div>
+            <div class="spend-date">{{ spend.review_date or spend.timestamp }}</div>
+        </div>
+        {% endfor %}
+        {% endfor %}
+        {% else %}
+        <p class="text-muted mb-0">No approved spends yet.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Wish List -->
+<div class="card mb-4">
+    <div class="card-header" data-bs-toggle="collapse" data-bs-target="#wish-list" role="button" style="cursor:pointer;">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="bi bi-bookmark-star"></i> Wish List
+                <i class="bi bi-chevron-down float-end"></i>
+            </h5>
+            <span class="text-muted small ms-3" id="wl-header-summary"></span>
+        </div>
+    </div>
+    <div class="collapse" id="wish-list">
+        <div class="card-body">
+
+            <!-- Add item form -->
+            <div class="wl-add-form mb-3 p-3">
+                <div class="row g-2 align-items-end">
+                    <div class="col-12 col-sm-4">
+                        <label class="form-label small fw-bold mb-1">Category</label>
+                        <select class="form-select form-select-sm" id="wl-category">
+                            <option value="">Select...</option>
+                            {% for cat in spend_categories %}
+                            <option value="{{ cat }}">{{ cat }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-12 col-sm">
+                        <label class="form-label small fw-bold mb-1">Trait</label>
+                        <input type="text" class="form-control form-control-sm" id="wl-trait"
+                               placeholder="e.g., Strength, Dominate">
+                    </div>
+                    <div class="col-5 col-sm-auto" style="max-width:80px;">
+                        <label class="form-label small fw-bold mb-1">From</label>
+                        <input type="number" class="form-control form-control-sm" id="wl-from" min="0" max="4" value="0">
+                    </div>
+                    <div class="col-2 col-sm-auto d-flex align-items-end justify-content-center pb-1 px-0" style="font-size:1.1rem; color:#666;">→</div>
+                    <div class="col-5 col-sm-auto" style="max-width:80px;">
+                        <label class="form-label small fw-bold mb-1">To</label>
+                        <input type="number" class="form-control form-control-sm" id="wl-to" min="1" max="5" value="1">
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-3 mt-2 flex-wrap">
+                    <span class="text-muted small">Cost: <strong id="wl-preview-cost" class="text-warning">—</strong> XP</span>
+                    <button class="btn btn-sm btn-outline-warning" id="wl-add-btn" disabled>
+                        <i class="bi bi-plus"></i> Add to List
+                    </button>
+                </div>
+            </div>
+
+            <!-- Items list -->
+            <div id="wl-items"></div>
+
+            <!-- Summary footer -->
+            <div id="wl-summary" class="d-none mt-2">
+                <div class="wl-summary-bar d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <span id="wl-total-text" class="small"></span>
+                    <span id="wl-xp-status" class="small"></span>
+                </div>
+            </div>
+
+            <!-- Empty state -->
+            <div id="wl-empty" class="text-center text-muted py-3">
+                <i class="bi bi-bookmark-star" style="font-size:1.8rem;opacity:0.25;"></i>
+                <p class="small mt-2 mb-0">No items yet. Add traits you're planning to purchase.</p>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- XP Ledger (collapsible) -->
+{% if ledger %}
+<div class="card mb-4">
+    <div class="card-header" data-bs-toggle="collapse" data-bs-target="#xp-ledger" role="button" style="cursor: pointer;">
+        <h5 class="mb-0">
+            <i class="bi bi-journal-text"></i> XP Ledger
+            <span class="badge bg-secondary ms-2">{{ ledger|length }} entries</span>
+            <i class="bi bi-chevron-down float-end"></i>
+        </h5>
+    </div>
+    <div class="collapse" id="xp-ledger">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-dark table-striped table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Awarded</th>
+                            <th>Spent</th>
+                            <th>Balance</th>
+                            <th>Reason</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% set ns = namespace(balance=0) %}
+                        {% for entry in ledger|reverse %}
+                        {% set ns.balance = ns.balance + entry.awarded - entry.spent %}
+                        <tr>
+                            <td>{{ entry.date }}</td>
+                            <td>
+                                {% if entry.awarded %}
+                                <span class="text-success">+{{ entry.awarded }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if entry.spent %}
+                                <span class="text-danger">-{{ entry.spent }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="{% if ns.balance >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                    {{ ns.balance }}
+                                </span>
+                            </td>
+                            <td>{{ entry.reason }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- XP Cost Reference (collapsed) -->
+<div class="card mb-4">
+    <div class="card-header" data-bs-toggle="collapse" data-bs-target="#xp-reference" role="button" style="cursor: pointer;">
+        <h5 class="mb-0">
+            <i class="bi bi-book"></i> V5 XP Cost Reference
+            <i class="bi bi-chevron-down float-end"></i>
+        </h5>
+    </div>
+    <div class="collapse" id="xp-reference">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-dark table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th>Category</th>
+                            <th>Cost Formula</th>
+                            <th>Example</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Attribute</td><td>New rating × 5</td><td>2→3 = 15 XP</td></tr>
+                        <tr><td>Skill</td><td>New rating × 3</td><td>1→2 = 6 XP</td></tr>
+                        <tr><td>New Skill (0→1)</td><td>3 XP flat</td><td>0→1 = 3 XP</td></tr>
+                        <tr><td>Discipline (In-Clan)</td><td>New rating × 5</td><td>0→2 = 15 XP</td></tr>
+                        <tr><td>Discipline (Out-of-Clan)</td><td>New rating × 7</td><td>0→1 = 7 XP</td></tr>
+                        <tr><td>Caitiff Discipline</td><td>New rating × 6</td><td>1→2 = 12 XP</td></tr>
+                        <tr><td>Blood Sorcery Ritual</td><td>Level × 3</td><td>Level 3 = 9 XP</td></tr>
+                        <tr><td>Thin-Blood Alchemy</td><td>Level × 3</td><td>Level 2 = 6 XP</td></tr>
+                        <tr><td>Advantage</td><td>3 XP per dot purchased</td><td>0→2 = 6 XP</td></tr>
+                        <tr><td>Loresheet</td><td>Purchased dot × 3</td><td>Buy dot 3 = 9 XP</td></tr>
+                    </tbody>
+                </table>
+                <small class="text-muted mt-2 d-block">For multi-dot purchases, add each step. Example: In-Clan Discipline 1→3 = (2×5) + (3×5) = 25 XP.</small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block bottom_nav %}
+<nav class="player-bottom-nav d-md-none" aria-label="Player navigation">
+    <a href="{{ url_for('player.my_characters') }}" class="player-bottom-nav-item">
+        <i class="bi bi-people"></i>
+        <span>Characters</span>
+    </a>
+    <button class="player-bottom-nav-item" id="bottom-claim-btn" aria-label="Claim XP">
+        <i class="bi bi-plus-circle"></i>
+        <span>Claim XP</span>
+    </button>
+    <button class="player-bottom-nav-item" id="bottom-spend-btn" aria-label="Request Spend">
+        <i class="bi bi-cart-plus"></i>
+        <span>Spend XP</span>
+    </button>
+    <button class="player-bottom-nav-item" id="bottom-wishlist-btn" aria-label="Wish List">
+        <i class="bi bi-bookmark-star"></i>
+        <span>Wish List</span>
+    </button>
+    <a href="#xp-ledger" class="player-bottom-nav-item" id="bottom-history-btn">
+        <i class="bi bi-journal-text"></i>
+        <span>History</span>
+    </a>
+</nav>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+
+    // ═══ Bottom nav — expand + scroll ═══
+    function expandAndScroll(collapseId) {
+        const el = document.getElementById(collapseId);
+        if (!el) return;
+        bootstrap.Collapse.getOrCreateInstance(el).show();
+        setTimeout(function() {
+            el.closest('.card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 50);
+    }
+
+    document.getElementById('bottom-claim-btn')?.addEventListener('click', function() {
+        expandAndScroll('claim-form');
+    });
+    document.getElementById('bottom-spend-btn')?.addEventListener('click', function() {
+        expandAndScroll('spend-form');
+    });
+    document.getElementById('bottom-history-btn')?.addEventListener('click', function(e) {
+        e.preventDefault();
+        document.getElementById('xp-ledger')?.closest('.card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    document.getElementById('bottom-wishlist-btn')?.addEventListener('click', function() {
+        expandAndScroll('wish-list');
+    });
+
+    // ═══ XP Claim Form Logic ═══
+
+    const claimChecks = document.querySelectorAll('.claim-cat-check');
+    const claimCount = document.getElementById('claim-xp-count');
+    const claimBtn = document.getElementById('claim-submit-btn');
+
+    function updateXPCount() {
+        let total = 0;
+        claimChecks.forEach(function(cb) {
+            if (cb.checked) {
+                if (cb.name === 'wildcard') {
+                    const amtInput = document.querySelector('.wildcard-amount-input');
+                    total += amtInput ? Math.max(1, parseInt(amtInput.value) || 1) : 1;
+                } else {
+                    total += 1;
+                }
+            }
+        });
+        claimCount.textContent = total + ' XP selected';
+        claimBtn.disabled = total === 0;
+    }
+
+    if (claimChecks.length) {
+        claimChecks.forEach(function(cb) {
+            cb.addEventListener('change', function() {
+                // Toggle link input visibility and required state
+                const target = document.getElementById(this.dataset.linkTarget);
+                if (target) {
+                    const linkInput = target.querySelector('.claim-link-input');
+                    const reasonInput = target.querySelector('.wildcard-reason-input');
+                    const amountInput = target.querySelector('.wildcard-amount-input');
+                    if (this.checked) {
+                        target.classList.remove('d-none');
+                        if (linkInput) linkInput.required = true;
+                        if (reasonInput) reasonInput.required = true;
+                        if (amountInput) amountInput.required = true;
+                    } else {
+                        target.classList.add('d-none');
+                        if (linkInput) {
+                            linkInput.required = false;
+                            linkInput.value = '';
+                        }
+                        if (reasonInput) {
+                            reasonInput.required = false;
+                            reasonInput.value = '';
+                        }
+                        if (amountInput) {
+                            amountInput.required = false;
+                            amountInput.value = '1';
+                        }
+                    }
+                }
+                updateXPCount();
+            });
+        });
+        // Also update count when wildcard amount changes
+        const wcAmount = document.querySelector('.wildcard-amount-input');
+        if (wcAmount) {
+            wcAmount.addEventListener('input', updateXPCount);
+        }
+    }
+
+    // ═══ Spend Request Form Logic ═══
+
+    const spendCategory = document.getElementById('spend_category');
+    const currentDots = document.getElementById('current_dots');
+    const newDots = document.getElementById('new_dots');
+    const inClanGroup = document.getElementById('in-clan-group');
+    const costValue = document.getElementById('spend-cost-value');
+    const costFormula = document.getElementById('spend-cost-formula');
+    const xpWarning = document.getElementById('spend-xp-warning');
+    const xpWarningText = document.getElementById('spend-xp-warning-text');
+    const availableXpEl = document.getElementById('available-xp');
+
+    if (!spendCategory) return;
+
+    // V5 XP cost rules (mirrors xp_rules.py)
+    const XP_RULES = {
+        'Attribute':                   { multiplier: 5, min: 1, max: 5 },
+        'Skill':                       { multiplier: 3, min: 1, max: 5 },
+        'New Skill':                   { flat: 3, min: 0, max: 1 },
+        'Discipline (In-Clan)':        { multiplier: 5, min: 0, max: 5 },
+        'Discipline (Out-of-Clan)':    { multiplier: 7, min: 0, max: 5 },
+        'Caitiff Discipline':          { multiplier: 6, min: 0, max: 5 },
+        'Blood Sorcery Ritual':        { level_mult: 3, min: 0, max: 5 },
+        'Thin-Blood Alchemy Formula':  { level_mult: 3, min: 0, max: 5 },
+        'Advantage (Merit/Background)':{ per_dot: 3, min: 0, max: 5 },
+        'Loresheet':                   { level_mult: 3, min: 0, max: 5 },
+    };
+
+    function calcCost() {
+        const cat = spendCategory.value;
+        const cur = parseInt(currentDots.value) || 0;
+        const nw = parseInt(newDots.value) || 0;
+        const rules = XP_RULES[cat];
+
+        if (!rules || nw < 1 || (rules.level_mult === undefined && nw <= cur)) {
+            costValue.textContent = '—';
+            costFormula.textContent = '';
+            updateWarning(0);
+            return;
+        }
+
+        let cost = 0;
+        let formula = '';
+
+        if (rules.flat !== undefined) {
+            cost = rules.flat;
+            formula = '3 XP flat';
+        } else if (rules.level_mult !== undefined) {
+            cost = nw * rules.level_mult;
+            formula = nw + ' × ' + rules.level_mult;
+        } else if (rules.per_dot !== undefined) {
+            cost = (nw - cur) * rules.per_dot;
+            formula = (nw - cur) + ' × ' + rules.per_dot;
+        } else {
+            for (let d = cur + 1; d <= nw; d++) {
+                cost += d * rules.multiplier;
+            }
+            if (nw - cur === 1) {
+                formula = nw + ' × ' + rules.multiplier;
+            } else {
+                const steps = [];
+                for (let d = cur + 1; d <= nw; d++) {
+                    steps.push('(' + d + '×' + rules.multiplier + ')');
+                }
+                formula = steps.join(' + ');
+            }
+        }
+
+        costValue.textContent = cost;
+        costFormula.textContent = formula;
+        updateWarning(cost);
+    }
+
+    function updateWarning(cost) {
+        if (!availableXpEl || !xpWarning) return;
+        const available = parseInt(availableXpEl.value) || 0;
+        if (cost > 0 && cost > available) {
+            xpWarningText.textContent = 'This costs ' + cost + ' XP but you only have ' + available + ' XP available. Staff may still approve if circumstances warrant.';
+            xpWarning.classList.remove('d-none');
+        } else {
+            xpWarning.classList.add('d-none');
+        }
+    }
+
+    function updateDotConstraints() {
+        const cat = spendCategory.value;
+        const rules = XP_RULES[cat];
+        if (!rules) return;
+
+        currentDots.min = rules.min;
+        currentDots.max = rules.max - 1;
+        newDots.min = rules.min + 1;
+        newDots.max = rules.max;
+
+        // For "New Skill", force 0→1
+        if (rules.flat !== undefined) {
+            currentDots.value = 0;
+            currentDots.disabled = true;
+            newDots.value = 1;
+            newDots.disabled = true;
+        } else if (rules.level_mult !== undefined) {
+            // Ritual/Formula/Loresheet purchases are priced by chosen dot only.
+            currentDots.value = 0;
+            currentDots.disabled = true;
+            newDots.disabled = false;
+        } else {
+            currentDots.disabled = false;
+            newDots.disabled = false;
+        }
+
+        // Show/hide In-Clan checkbox
+        const isDiscipline = cat.toLowerCase().includes('discipline');
+        if (inClanGroup) {
+            if (isDiscipline) {
+                inClanGroup.classList.remove('d-none');
+            } else {
+                inClanGroup.classList.add('d-none');
+            }
+        }
+    }
+
+    spendCategory.addEventListener('change', function() {
+        updateDotConstraints();
+        calcCost();
+    });
+    currentDots.addEventListener('input', calcCost);
+    newDots.addEventListener('input', calcCost);
+
+});
+
+// ═══ Wish List (localStorage per character) ═══
+(function() {
+    const STORAGE_KEY = 'wl_' + {{ char.character_name | tojson }};
+    const AVAILABLE_XP = {{ available_xp | int }};
+
+    // Mirror of the server-side cost rules (same as XP_RULES above)
+    const WL_RULES = {
+        'Attribute':                   { multiplier: 5 },
+        'Skill':                       { multiplier: 3 },
+        'New Skill':                   { flat: 3 },
+        'Discipline (In-Clan)':        { multiplier: 5 },
+        'Discipline (Out-of-Clan)':    { multiplier: 7 },
+        'Caitiff Discipline':          { multiplier: 6 },
+        'Blood Sorcery Ritual':        { level_mult: 3 },
+        'Thin-Blood Alchemy Formula':  { level_mult: 3 },
+        'Advantage (Merit/Background)':{ per_dot: 3 },
+        'Loresheet':                   { level_mult: 3 },
+    };
+
+    function wlCost(cat, from, to) {
+        const r = WL_RULES[cat];
+        if (!r) return null;
+        if (r.flat !== undefined)      return (from === 0 && to === 1) ? r.flat : null;
+        if (r.level_mult !== undefined) return to > 0 ? to * r.level_mult : null;
+        if (r.per_dot !== undefined)   return (to > from) ? (to - from) * r.per_dot : null;
+        if (to <= from) return null;
+        let cost = 0;
+        for (let d = from + 1; d <= to; d++) cost += d * r.multiplier;
+        return cost || null;
+    }
+
+    function load() {
+        try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+        catch(e) { return []; }
+    }
+
+    function save(items) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    }
+
+    function esc(str) {
+        const d = document.createElement('div');
+        d.textContent = str;
+        return d.innerHTML;
+    }
+
+    function render() {
+        const items = load();
+        const container = document.getElementById('wl-items');
+        const emptyEl   = document.getElementById('wl-empty');
+        const summaryEl = document.getElementById('wl-summary');
+        const headerEl  = document.getElementById('wl-header-summary');
+
+        container.innerHTML = '';
+
+        if (items.length === 0) {
+            emptyEl.classList.remove('d-none');
+            summaryEl.classList.add('d-none');
+            headerEl.textContent = '';
+            return;
+        }
+
+        emptyEl.classList.add('d-none');
+        summaryEl.classList.remove('d-none');
+
+        let total = 0;
+        items.forEach(function(item, idx) {
+            total += item.cost;
+            const div = document.createElement('div');
+            div.className = 'wl-item';
+            div.innerHTML =
+                '<div class="wl-item-body">' +
+                    '<div class="wl-item-main">' +
+                        '<span class="wl-item-trait">' + esc(item.trait) + '</span>' +
+                        '<span class="wl-item-cat">' + esc(item.category) + '</span>' +
+                    '</div>' +
+                    '<div class="wl-item-meta">' +
+                        '<span class="wl-item-dots">' + item.from_dots + ' → ' + item.to_dots + '</span>' +
+                        '<span class="wl-item-cost">' + item.cost + ' XP</span>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="wl-item-actions">' +
+                    '<button class="btn btn-sm btn-outline-secondary wl-fill-btn py-0" title="Pre-fill spend form" data-idx="' + idx + '">' +
+                        '<i class="bi bi-arrow-up-right-square"></i>' +
+                    '</button>' +
+                    '<button class="btn btn-sm btn-outline-danger wl-remove-btn py-0" title="Remove" data-idx="' + idx + '">' +
+                        '<i class="bi bi-x"></i>' +
+                    '</button>' +
+                '</div>';
+            container.appendChild(div);
+        });
+
+        // Bind buttons
+        container.querySelectorAll('.wl-remove-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const list = load();
+                list.splice(parseInt(this.dataset.idx), 1);
+                save(list);
+                render();
+            });
+        });
+        container.querySelectorAll('.wl-fill-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                fillSpend(load()[parseInt(this.dataset.idx)]);
+            });
+        });
+
+        // Summary
+        const xpAfter = AVAILABLE_XP - total;
+        headerEl.textContent = items.length + ' item' + (items.length !== 1 ? 's' : '') + ' · ' + total + ' XP';
+        document.getElementById('wl-total-text').innerHTML =
+            '<strong>' + total + ' XP</strong> planned across ' + items.length + ' item' + (items.length !== 1 ? 's' : '');
+        const statusEl = document.getElementById('wl-xp-status');
+        if (xpAfter >= 0) {
+            statusEl.innerHTML = '<span class="text-success"><i class="bi bi-check-circle"></i> ' + xpAfter + ' XP remaining after all</span>';
+        } else {
+            statusEl.innerHTML = '<span class="text-danger"><i class="bi bi-exclamation-triangle"></i> ' + Math.abs(xpAfter) + ' XP short of full list</span>';
+        }
+    }
+
+    function fillSpend(item) {
+        const spendEl = document.getElementById('spend-form');
+        if (spendEl) bootstrap.Collapse.getOrCreateInstance(spendEl).show();
+        const catEl   = document.getElementById('spend_category');
+        const traitEl = document.getElementById('trait_name');
+        const fromEl  = document.getElementById('current_dots');
+        const toEl    = document.getElementById('new_dots');
+        if (catEl)   { catEl.value = item.category; catEl.dispatchEvent(new Event('change')); }
+        if (traitEl) { traitEl.value = item.trait; }
+        if (fromEl)  { fromEl.value = item.from_dots; fromEl.dispatchEvent(new Event('input')); }
+        if (toEl)    { toEl.value = item.to_dots; toEl.dispatchEvent(new Event('input')); }
+        setTimeout(function() {
+            spendEl?.closest('.card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+    }
+
+    // Add form
+    const wlCat  = document.getElementById('wl-category');
+    const wlTrait = document.getElementById('wl-trait');
+    const wlFrom  = document.getElementById('wl-from');
+    const wlTo    = document.getElementById('wl-to');
+    const wlPreview = document.getElementById('wl-preview-cost');
+    const wlAddBtn  = document.getElementById('wl-add-btn');
+
+    function updatePreview() {
+        const cost = wlCost(wlCat.value, parseInt(wlFrom.value)||0, parseInt(wlTo.value)||0);
+        const valid = cost !== null && wlTrait.value.trim();
+        wlPreview.textContent = valid ? cost : '—';
+        wlAddBtn.disabled = !valid;
+    }
+
+    [wlCat, wlTrait, wlFrom, wlTo].forEach(function(el) {
+        el?.addEventListener('input', updatePreview);
+        el?.addEventListener('change', updatePreview);
+    });
+
+    wlAddBtn?.addEventListener('click', function() {
+        const cat   = wlCat.value;
+        const trait = wlTrait.value.trim();
+        const from  = parseInt(wlFrom.value) || 0;
+        const to    = parseInt(wlTo.value) || 0;
+        const cost  = wlCost(cat, from, to);
+        if (!cost || !trait) return;
+
+        const items = load();
+        items.push({ id: Date.now() + '_' + Math.random().toString(36).slice(2),
+                     category: cat, trait: trait, from_dots: from, to_dots: to, cost: cost });
+        save(items);
+
+        wlTrait.value = '';
+        wlCat.value = '';
+        wlFrom.value = 0;
+        wlTo.value = 1;
+        wlPreview.textContent = '—';
+        wlAddBtn.disabled = true;
+        render();
+    });
+
+    render();
+})();
+</script>
+{% endblock %}
