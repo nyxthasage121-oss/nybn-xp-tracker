@@ -1318,6 +1318,50 @@ tr.has-clan-color {
 }
 
 /* ══════════════════════════════════════════════════════════════════
+   SITE CARDS (Hunting Sites page)
+   --borough-color cascades down from the borough wrapper div so
+   each card automatically uses its district's color.
+   ══════════════════════════════════════════════════════════════════ */
+
+.site-card {
+    border-top: 2px solid var(--borough-color, rgba(255,255,255,0.08));
+    border-left: 1px solid var(--borough-color, rgba(255,255,255,0.08));
+    border-right: 1px solid rgba(255,255,255,0.06);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.site-card:hover {
+    box-shadow:
+        0 6px 24px rgba(0, 0, 0, 0.5),
+        0 0 0 1px var(--borough-color, transparent);
+    transform: translateY(-2px);
+}
+
+.site-card .card-header {
+    border-bottom: 1px solid var(--borough-color, rgba(255,255,255,0.06));
+    background: linear-gradient(
+        135deg,
+        rgba(255,255,255,0.04) 0%,
+        transparent 60%
+    );
+}
+
+/* Borough-colored ownership badge */
+.site-badge-owned {
+    background: transparent;
+    border: 1px solid var(--borough-color, rgba(255,255,255,0.2));
+    color: var(--borough-color, var(--text-muted));
+    font-weight: 500;
+}
+
+/* Neutral unowned badge */
+.site-badge-unowned {
+    background: rgba(255,255,255,0.04);
+    color: var(--text-disabled);
+    border: 1px solid rgba(255,255,255,0.08);
+}
+
+/* ══════════════════════════════════════════════════════════════════
    BUTTON COLOR NORMALIZATION
    All non-destructive Bootstrap color variants → unified neutral dark.
    Only btn-danger / btn-outline-danger stay blood red.

@@ -19,57 +19,57 @@
   {% for borough in borough_order %}
   {% set borough_sites = by_borough.get(borough, []) %}
   {% if borough_sites %}
-  <div class="mt-4 mb-3 {{ borough_class.get(borough, '') }}">
-    <div class="borough-header">
+  <div class="mt-4 mb-4 {{ borough_class.get(borough, '') }}">
+    <div class="borough-header mb-3">
       <span class="borough-pip"></span>
       <span class="borough-title"><i class="bi bi-geo-alt-fill me-1"></i>{{ borough }}</span>
       <div class="borough-rule"></div>
     </div>
-  </div>
-  <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3 mb-2">
-    {% for site in borough_sites %}
-    <div class="col">
-      <div class="card h-100 {% if site.coterie_id %}border-secondary{% endif %}">
-        <div class="card-header d-flex justify-content-between align-items-start gap-2">
-          <span class="fw-semibold">{{ site.name }}</span>
-          {% if site.coterie_id %}
-          <span class="badge bg-warning text-dark text-wrap text-end" style="max-width:50%">{{ site.coterie_name }}</span>
-          {% else %}
-          <span class="badge bg-secondary">Unowned</span>
-          {% endif %}
-        </div>
-        <div class="card-body">
-          <!-- Predator types / DCs -->
-          <div class="mb-2">
-            {% for pt in site.predator_types %}
-            <span class="badge {% if pt.dc == 2 %}bg-success{% elif pt.dc == 3 %}bg-secondary{% else %}bg-danger{% endif %} me-1">
-              {{ pt.type }} DC {{ pt.dc }}
-            </span>
-            {% endfor %}
+    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3">
+      {% for site in borough_sites %}
+      <div class="col">
+        <div class="card h-100 site-card">
+          <div class="card-header d-flex justify-content-between align-items-start gap-2">
+            <span class="fw-semibold">{{ site.name }}</span>
+            {% if site.coterie_id %}
+            <span class="badge site-badge-owned text-wrap text-end" style="max-width:50%">{{ site.coterie_name }}</span>
+            {% else %}
+            <span class="badge site-badge-unowned">Unowned</span>
+            {% endif %}
           </div>
-          <!-- Site bonus -->
-          {% if site.bonus %}
-          <p class="text-muted small mb-2">{{ site.bonus }}</p>
-          {% endif %}
-          <!-- Assign form -->
-          <form method="POST"
-                action="{{ url_for('sites.assign', site_id=site.site_id) }}"
-                class="d-flex gap-2 align-items-center mt-auto">
-            <select name="coterie_id" class="form-select form-select-sm">
-              <option value="">— unowned —</option>
-              {% for c in coteries | sort(attribute='name') %}
-              <option value="{{ c.coterie_id }}"
-                      {% if c.coterie_id == site.coterie_id %}selected{% endif %}>
-                {{ c.name }}
-              </option>
+          <div class="card-body">
+            <!-- Predator types / DCs -->
+            <div class="mb-2">
+              {% for pt in site.predator_types %}
+              <span class="badge {% if pt.dc == 2 %}bg-success{% elif pt.dc == 3 %}bg-secondary{% else %}bg-danger{% endif %} me-1">
+                {{ pt.type }} DC {{ pt.dc }}
+              </span>
               {% endfor %}
-            </select>
-            <button type="submit" class="btn btn-sm btn-danger text-nowrap">Save</button>
-          </form>
+            </div>
+            <!-- Site bonus -->
+            {% if site.bonus %}
+            <p class="text-muted small mb-2">{{ site.bonus }}</p>
+            {% endif %}
+            <!-- Assign form -->
+            <form method="POST"
+                  action="{{ url_for('sites.assign', site_id=site.site_id) }}"
+                  class="d-flex gap-2 align-items-center mt-auto">
+              <select name="coterie_id" class="form-select form-select-sm">
+                <option value="">— unowned —</option>
+                {% for c in coteries | sort(attribute='name') %}
+                <option value="{{ c.coterie_id }}"
+                        {% if c.coterie_id == site.coterie_id %}selected{% endif %}>
+                  {{ c.name }}
+                </option>
+                {% endfor %}
+              </select>
+              <button type="submit" class="btn btn-sm btn-danger text-nowrap">Save</button>
+            </form>
+          </div>
         </div>
       </div>
+      {% endfor %}
     </div>
-    {% endfor %}
   </div>
   {% endif %}
   {% endfor %}
