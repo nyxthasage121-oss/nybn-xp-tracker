@@ -1,28 +1,29 @@
 /* NYbN XP Tracker — Dark theme styling */
 
 :root {
-    /* ── Brand accent — arterial red, punchy against dark panels ── */
-    --vtm-red:       #c0392b;
-    --vtm-red-deep:  #96281b;
-    --vtm-red-light: #e74c3c;
-    --vtm-steel:     #3a5a7a;   /* secondary cold blue */
-    --vtm-gold:      #c5a55a;   /* borough system only */
+    /* ── NYC Brooklyn Bridge palette — sampled from nyc.jpg ── */
+    /* Bridge cable rust-orange / Freedom Tower electric blue / window amber */
+    --vtm-red:       #c85218;   /* bridge cable orange */
+    --vtm-red-deep:  #9e4012;   /* deep shadow orange */
+    --vtm-red-light: #e07030;   /* highlight orange */
+    --vtm-steel:     #2476e8;   /* Freedom Tower electric blue */
+    --vtm-gold:      #d4a840;   /* building window amber */
 
     /* ── Dimensions ── */
     --sidebar-width: 250px;
     --radius:        4px;
     --radius-sm:     2px;
 
-    /* ── Background layers — cold blue-black, never neutral ── */
-    --bg-sidebar: #0a0c12;
-    --bg-page:    #14161f;
-    --bg-panel:   #1e2230;
-    --bg-hover:   #262b3a;
+    /* ── Background layers — midnight navy from the photo sky ── */
+    --bg-sidebar: #020810;   /* deepest shadow, darker than sky */
+    --bg-page:    #060d1c;   /* midnight sky */
+    --bg-panel:   #0d1a2e;   /* building faces in darkness */
+    --bg-hover:   #142238;   /* slightly lit — hover state */
 
-    /* ── Text — cool off-white, never pure white ── */
-    --text-primary:  #d6d9e0;
-    --text-muted:    #8a8f9e;
-    --text-disabled: #565b69;
+    /* ── Text — cool blue-tinted off-white like the sky haze ── */
+    --text-primary:  #ccd8ec;
+    --text-muted:    #6888aa;
+    --text-disabled: #3a5070;
 
     /* ── Bootstrap overrides — sharp edges ── */
     --bs-border-radius:      4px;
@@ -30,16 +31,24 @@
     --bs-border-radius-lg:   4px;
     --bs-border-radius-xl:   4px;
     --bs-card-border-radius: 4px;
-    --bs-body-bg:            #14161f;
-    --bs-body-color:         #d6d9e0;
+    --bs-body-bg:            #060d1c;
+    --bs-body-color:         #ccd8ec;
 }
 
 body {
     background-color: var(--bg-page);
-    /* NYC street-lamp glow from above, cool shadow pooling at the bottom */
+    /* Sky gradient — nearly black at top, deep navy at horizon,
+       warm bridge-orange city glow rising from below,
+       faint Freedom Tower blue drifting in from the right              */
     background-image:
-        radial-gradient(ellipse 110% 50% at 50% -5%, rgba(130, 20, 10, 0.18) 0%, transparent 62%),
-        radial-gradient(ellipse 80% 35% at 50% 108%, rgba(18, 22, 52, 0.35) 0%, transparent 58%);
+        radial-gradient(ellipse 140% 40% at 50% 115%, rgba(160, 65, 15, 0.22) 0%, transparent 55%),
+        radial-gradient(ellipse 55% 45% at 92% 12%,  rgba(36, 118, 232, 0.08) 0%, transparent 52%),
+        linear-gradient(180deg,
+            #020810 0%,
+            #04091a 18%,
+            #060d1e 40%,
+            #081226 65%,
+            #060e20 100%);
     color: var(--text-primary);
     font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
     font-size: 0.925rem;
@@ -69,7 +78,7 @@ main.flex-grow-1::after {
     height: 420px;
     pointer-events: none;
     z-index: 8998;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cg opacity='0.72' fill='%23180808'%3E%3C!-- Main mass --%3E%3Cpath d='M142,128 C158,114 170,122 166,142 C162,160 146,167 131,160 C116,153 126,142 142,128 Z'/%3E%3C!-- Drip streak --%3E%3Cpath d='M150,160 C152,172 150,186 146,191 C143,195 140,193 141,187 C143,178 146,170 150,160 Z'/%3E%3C!-- Secondary drip --%3E%3Cpath d='M134,165 C133,174 130,181 127,182 C125,183 124,180 126,176 C128,170 131,167 134,165 Z'/%3E%3C!-- Satellite drops --%3E%3Ccircle cx='117' cy='150' r='7'/%3E%3Ccircle cx='160' cy='167' r='5'/%3E%3Ccircle cx='168' cy='134' r='3.5'/%3E%3Ccircle cx='124' cy='167' r='3'/%3E%3Ccircle cx='110' cy='162' r='2'/%3E%3Ccircle cx='172' cy='150' r='2.5'/%3E%3Ccircle cx='155' cy='176' r='2'/%3E%3C!-- Thin streak --%3E%3Cpath d='M135,152 C129,158 122,163 118,165' stroke='%23180808' stroke-width='2.5' stroke-linecap='round' fill='none'/%3E%3C!-- Fine scatter --%3E%3Ccircle cx='104' cy='158' r='1.5'/%3E%3Ccircle cx='176' cy='142' r='1.5'/%3E%3Ccircle cx='162' cy='180' r='1.2'/%3E%3Ccircle cx='113' cy='172' r='1'/%3E%3C/g%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cg opacity='0.72' fill='%230a1020'%3E%3C!-- Main mass --%3E%3Cpath d='M142,128 C158,114 170,122 166,142 C162,160 146,167 131,160 C116,153 126,142 142,128 Z'/%3E%3C!-- Drip streak --%3E%3Cpath d='M150,160 C152,172 150,186 146,191 C143,195 140,193 141,187 C143,178 146,170 150,160 Z'/%3E%3C!-- Secondary drip --%3E%3Cpath d='M134,165 C133,174 130,181 127,182 C125,183 124,180 126,176 C128,170 131,167 134,165 Z'/%3E%3C!-- Satellite drops --%3E%3Ccircle cx='117' cy='150' r='7'/%3E%3Ccircle cx='160' cy='167' r='5'/%3E%3Ccircle cx='168' cy='134' r='3.5'/%3E%3Ccircle cx='124' cy='167' r='3'/%3E%3Ccircle cx='110' cy='162' r='2'/%3E%3Ccircle cx='172' cy='150' r='2.5'/%3E%3Ccircle cx='155' cy='176' r='2'/%3E%3C!-- Thin streak --%3E%3Cpath d='M135,152 C129,158 122,163 118,165' stroke='%230a1020' stroke-width='2.5' stroke-linecap='round' fill='none'/%3E%3C!-- Fine scatter --%3E%3Ccircle cx='104' cy='158' r='1.5'/%3E%3Ccircle cx='176' cy='142' r='1.5'/%3E%3Ccircle cx='162' cy='180' r='1.2'/%3E%3Ccircle cx='113' cy='172' r='1'/%3E%3C/g%3E%3C/svg%3E");
     background-size: contain;
     background-repeat: no-repeat;
     background-position: bottom right;
@@ -112,19 +121,19 @@ body.login-page {
     max-width: 420px;
     margin: 80px auto;
     background-color: rgba(10, 12, 18, 0.9);
-    border: 1px solid rgba(192, 57, 43, 0.45);
+    border: 1px solid rgba(200, 82, 24, 0.45);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
     box-shadow:
         0 12px 50px rgba(0, 0, 0, 0.88),
-        0 0 0 1px rgba(192, 57, 43, 0.15),
-        0 0 60px rgba(100, 8, 8, 0.08);
+        0 0 0 1px rgba(200, 82, 24, 0.15),
+        0 0 60px rgba(90, 40, 5, 0.08);
     border-radius: var(--radius) !important;
     overflow: hidden;
 }
 
 .login-card .card-header {
-    background: linear-gradient(135deg, var(--vtm-red) 0%, #4a0000 100%);
+    background: linear-gradient(135deg, var(--vtm-red) 0%, #2a1200 100%);
     padding: 2rem 1.5rem 1.5rem;
     border-bottom: 1px solid rgba(255,255,255,0.08);
 }
@@ -160,8 +169,8 @@ body.login-page {
     width: var(--sidebar-width);
     flex-shrink: 0;
     background-color: var(--bg-sidebar) !important;
-    /* Right edge: one structural red line, like the edge of a girder */
-    box-shadow: 1px 0 0 rgba(192, 57, 43, 0.25), 4px 0 20px rgba(0, 0, 0, 0.5);
+    /* Right edge: one structural orange line — bridge cable catching light */
+    box-shadow: 1px 0 0 rgba(200, 82, 24, 0.25), 4px 0 20px rgba(0, 0, 0, 0.5);
     border-color: transparent !important;
 }
 
@@ -178,28 +187,28 @@ body.login-page {
     padding: 1.4rem 1rem 1.3rem;
     position: relative;
     overflow: hidden;
-    border-bottom: 1px solid rgba(192, 57, 43, 0.2);
+    border-bottom: 1px solid rgba(200, 82, 24, 0.2);
     flex-shrink: 0;
 }
 
-/* Atmospheric gradient: bridge red bleeds from top-left, cold blue upper-right */
+/* Atmospheric gradient: bridge orange bleeds from top-left, Freedom Tower blue upper-right */
 .sidebar-brand-area::before {
     content: '';
     position: absolute;
     inset: 0;
     background:
-        linear-gradient(135deg, rgba(100, 8, 8, 0.48) 0%, rgba(8, 10, 18, 0.82) 55%, rgba(6, 8, 16, 0.96) 100%),
-        radial-gradient(ellipse 110% 85% at 90% 10%, rgba(26, 60, 130, 0.1) 0%, transparent 58%);
+        linear-gradient(135deg, rgba(90, 40, 5, 0.48) 0%, rgba(8, 10, 18, 0.82) 55%, rgba(6, 8, 16, 0.96) 100%),
+        radial-gradient(ellipse 110% 85% at 90% 10%, rgba(36, 118, 232, 0.10) 0%, transparent 58%);
     pointer-events: none;
 }
 
-/* Top highlight — one structural line */
+/* Top highlight — bridge cable orange → Freedom Tower blue → fade out */
 .sidebar-brand-area::after {
     content: '';
     position: absolute;
     top: 0; left: 0; right: 0;
     height: 1px;
-    background: linear-gradient(to right, rgba(192, 57, 43, 0.6), rgba(58, 90, 122, 0.15), transparent);
+    background: linear-gradient(to right, rgba(200, 82, 24, 0.6), rgba(36, 118, 232, 0.15), transparent);
     pointer-events: none;
 }
 
@@ -214,7 +223,7 @@ body.login-page {
     font-size: 1.6rem;
     color: var(--vtm-red);
     line-height: 1;
-    filter: drop-shadow(0 0 10px rgba(192, 57, 43, 0.9)) drop-shadow(0 0 3px rgba(192, 57, 43, 0.5));
+    filter: drop-shadow(0 0 10px rgba(200, 82, 24, 0.9)) drop-shadow(0 0 3px rgba(200, 82, 24, 0.5));
 }
 
 .sidebar-brand-title {
@@ -258,7 +267,7 @@ body.login-page {
 /* Active: solid red bar on left edge — the eye's anchor */
 .sidebar .nav-link.active {
     color: #fff;
-    background-color: rgba(192, 57, 43, 0.12);
+    background-color: rgba(200, 82, 24, 0.12);
     border-left-color: var(--vtm-red);
 }
 
@@ -350,7 +359,7 @@ body.login-page {
 }
 
 .card:hover {
-    box-shadow: 0 6px 28px rgba(192, 57, 43, 0.12), 0 2px 8px rgba(0, 0, 0, 0.45);
+    box-shadow: 0 6px 28px rgba(200, 82, 24, 0.12), 0 2px 8px rgba(0, 0, 0, 0.45);
 }
 
 .card-header {
@@ -443,7 +452,7 @@ body.login-page {
 /* Alternating rows */
 .table-dark {
     --bs-table-bg: var(--bg-panel);
-    --bs-table-striped-bg: #1a1d28;
+    --bs-table-striped-bg: #0b1624;
     --bs-table-hover-bg: var(--bg-hover);
     --bs-table-border-color: rgba(255,255,255,0.05);
     --bs-table-color: var(--text-primary);
@@ -465,8 +474,8 @@ body.login-page {
 
 .form-control:focus, .form-select:focus {
     background-color: var(--bg-hover);
-    border-color: rgba(192, 57, 43, 0.5);
-    box-shadow: 0 0 0 3px rgba(192, 57, 43, 0.12);
+    border-color: rgba(200, 82, 24, 0.5);
+    box-shadow: 0 0 0 3px rgba(200, 82, 24, 0.12);
     color: var(--text-primary);
 }
 
@@ -495,7 +504,7 @@ body.login-page {
 }
 
 .bg-danger { background-color: var(--vtm-red) !important; }
-.bg-secondary { background-color: #2a2f3d !important; }
+.bg-secondary { background-color: #112030 !important; }
 
 /* Alerts */
 .alert {
@@ -543,7 +552,7 @@ body.login-page {
         url('/static/images/nyc.jpg');
     background-size: cover;
     background-position: center 22%;
-    border-bottom: 1px solid rgba(139, 0, 0, 0.45) !important;
+    border-bottom: 1px solid rgba(140, 60, 8, 0.45) !important;
 }
 
 .player-navbar .navbar-brand img {
@@ -590,13 +599,13 @@ body.login-page {
 
 .table th {
     color: var(--vtm-gold);
-    border-color: #333;
+    border-color: rgba(255, 255, 255, 0.07);
     font-weight: 600;
     white-space: nowrap;
 }
 
 .table td {
-    border-color: #2a2a3e;
+    border-color: #0e1e30;
     vertical-align: middle;
 }
 
@@ -612,7 +621,7 @@ tr[data-href]:hover {
 }
 
 tr[data-href]:hover td {
-    background-color: rgba(192, 57, 43, 0.12) !important;
+    background-color: rgba(200, 82, 24, 0.12) !important;
 }
 
 /* ── XP colors ──────────────────────────────────────────────────── */
@@ -726,8 +735,8 @@ tr.has-clan-color {
 
 /* ── Character hero ─────────────────────────────────────────────── */
 .char-hero {
-    background: linear-gradient(135deg, var(--bg-panel) 0%, #191c28 65%, rgba(192, 57, 43, 0.15) 100%);
-    border: 1px solid rgba(192, 57, 43, 0.25);
+    background: linear-gradient(135deg, var(--bg-panel) 0%, #091420 65%, rgba(200, 82, 24, 0.15) 100%);
+    border: 1px solid rgba(200, 82, 24, 0.25);
     border-radius: var(--radius);
     padding: 1.75rem 2rem;
     margin-bottom: 1.5rem;
@@ -740,7 +749,7 @@ tr.has-clan-color {
     position: absolute;
     top: 0; right: 0;
     width: 180px; height: 100%;
-    background: linear-gradient(to left, rgba(139,0,0,0.12), transparent);
+    background: linear-gradient(to left, rgba(140, 60, 8, 0.12), transparent);
     pointer-events: none;
 }
 
@@ -754,7 +763,7 @@ tr.has-clan-color {
 }
 
 .char-hero-meta {
-    color: #8888a8;
+    color: #6888aa;
     font-size: 0.85rem;
     letter-spacing: 0.06em;
     text-transform: uppercase;
@@ -964,8 +973,8 @@ tr.has-clan-color {
 }
 
 .cal-hero-current {
-    background: rgba(139, 0, 0, 0.12);
-    border-left: 3px solid #8b0000;
+    background: rgba(140, 60, 8, 0.12);
+    border-left: 3px solid var(--vtm-red);
 }
 
 .cal-hero-upcoming {
@@ -1043,7 +1052,7 @@ tr.has-clan-color {
 }
 
 .cal-row-current {
-    background: rgba(139, 0, 0, 0.08);
+    background: rgba(140, 60, 8, 0.08);
     color: #e88;
     font-weight: 600;
 }
@@ -1163,7 +1172,7 @@ tr.has-clan-color {
     left: 0;
     right: 0;
     background: rgba(16, 24, 48, 0.97);
-    border-top: 1px solid rgba(139, 0, 0, 0.4);
+    border-top: 1px solid rgba(140, 60, 8, 0.4);
     display: flex;
     z-index: 1050;
     backdrop-filter: blur(10px);
