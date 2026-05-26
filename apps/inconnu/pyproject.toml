@@ -1,0 +1,57 @@
+[project]
+name = "inconnu"
+version = "2026.02.5"
+description = "An advanced Discord dice bot and character manager for V5"
+authors = [{ name = "tiltowait", email = "208040+tiltowait@users.noreply.github.com" }]
+license = "MIT"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+    "flatdict>=4.0.1,<5",
+    "python-dotenv>=0.21.0,<2",
+    "uvicorn>=0.37.0,<1",
+    "fastapi>=0.120.3,<1",
+    "py-cord[speed]==2.7.0",
+    "pyparsing>=3.1.1,<4",
+    "cachetools>=5.5.2,<6",
+    "uvloop>=0.21.0,<1",
+    "loguru>=0.7.3,<1",
+    "pypcg>=0.0.4,<1",
+    "async-lru>=2.1.0",
+    "petname>=2.6",
+    "aiosqlite>=0.22.1",
+    "async-timeout>=5.0.1",
+    "sqlalchemy[asyncio]>=2.0,<3",
+]
+
+[project.scripts]
+inconnu = "main:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0,<9",
+    "pytest-asyncio>=1.2.0,<2",
+    "httpx>=0.28.1,<1",
+    "pytest-cov>=7.0.0,<8",
+]
+
+[tool.ruff]
+line-length = 100
+
+[tool.isort]
+profile = "black"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+filterwarnings = [
+    "ignore::pydantic.warnings.PydanticDeprecatedSince211",
+    "ignore:'audioop' is deprecated:DeprecationWarning",
+    "ignore:the imp module is deprecated:DeprecationWarning",
+    "ignore:There is no current event loop:DeprecationWarning:discord.client",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+sources = ["src"]

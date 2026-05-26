@@ -1,0 +1,37 @@
+"""Tasks for premium features."""
+
+import asyncio
+from datetime import timedelta
+
+import discord
+from loguru import logger
+
+import api
+import db
+import services
+
+
+async def remove_expired_images():
+    """Removes images from expired premium users."""
+    logger.info("TASK: Removing images from expired supporters")
+
+    expiration = discord.utils.utcnow() - timedelta(days=7)
+    expired_user_ids = []
+    api_tasks = []
+    async for supporter in db.supporters.find({"discontinued": {"$lt": expiration}}):
+        user_id = supporter["_id"]
+        expired_user_ids.append(user_id)
+        logger.info("TASK: Removing {}'s profile images", user_id)
+
+        for char in await services.char_mgr.fetchuser(user_id):
+            logger.info("TASK: Removing images from {}", char.name)
+            api_tasks.append(api.delete_character_faceclaims(char))
+
+    logger.info(
+        "TASK: Removing images from {} characters due to expired supporter status",
+        len(api_tasks),
+    )
+    if api_tasks:
+        await asyncio.gather(*api_tasks)
+    if expired_user_ids:
+        await db.supporters.delete_many({"_id": {"$in": expired_user_ids}})

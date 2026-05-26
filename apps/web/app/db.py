@@ -288,3 +288,74 @@ class DbHuntingSite(db.Model):
     coterie_id = db.Column(Integer, db.ForeignKey('coteries.id'), nullable=True, index=True)
     active = db.Column(Boolean, default=True, index=True)
     sort_order = db.Column(Integer, default=0)
+
+
+# ── Inconnu character manager tables ─────────────────────────────────────────
+
+class DbInconnuChar(db.Model):
+    """A VTM V5 character managed by Inconnu."""
+    __tablename__ = 'inconnu_characters'
+    id = db.Column(Integer, primary_key=True, autoincrement=True)
+    guild = db.Column(Integer, nullable=False, index=True)
+    user = db.Column(Integer, nullable=False, index=True)
+    name = db.Column(String(200), nullable=False)
+    splat = db.Column(String(20), nullable=False, default='vampire')
+    health = db.Column(String(50), nullable=False, default='')
+    willpower = db.Column(String(50), nullable=False, default='')
+    humanity = db.Column(Integer, default=7)
+    stains = db.Column(Integer, default=0)
+    hunger = db.Column(Integer, default=1)
+    potency = db.Column(Integer, default=0)
+    traits = db.Column(Text, default='[]')
+    profile = db.Column(Text, default='{}')
+    convictions = db.Column(Text, default='[]')
+    header = db.Column(Text, default='{}')
+    macros = db.Column(Text, default='[]')
+    experience = db.Column(Text, default='{}')
+    stat_log = db.Column(Text, default='{}')
+
+    __table_args__ = (
+        db.UniqueConstraint('guild', 'user', 'name', name='uq_inconnu_char'),
+    )
+
+
+class DbInconnuGuild(db.Model):
+    """Guild-wide settings for Inconnu."""
+    __tablename__ = 'inconnu_guilds'
+    id = db.Column(Integer, primary_key=True, autoincrement=True)
+    guild = db.Column(Integer, nullable=False, unique=True, index=True)
+    name = db.Column(String(200), nullable=False, default='')
+    active = db.Column(Boolean, default=True)
+    joined = db.Column(String(30), default='')
+    left = db.Column(String(30), default='')
+    settings = db.Column(Text, default='{}')
+
+
+class DbInconnuUser(db.Model):
+    """Per-user Inconnu settings."""
+    __tablename__ = 'inconnu_users'
+    id = db.Column(Integer, primary_key=True, autoincrement=True)
+    user = db.Column(Integer, nullable=False, unique=True, index=True)
+    settings = db.Column(Text, default='{}')
+
+
+class DbInconnuRPPost(db.Model):
+    """An Inconnu rolepost."""
+    __tablename__ = 'inconnu_rp_posts'
+    id = db.Column(Integer, primary_key=True, autoincrement=True)
+    date = db.Column(String(30), default='')
+    date_modified = db.Column(String(30), default='')
+    guild = db.Column(Integer, nullable=False, index=True)
+    channel = db.Column(Integer, nullable=False)
+    user = db.Column(Integer, nullable=False, index=True)
+    message_id = db.Column(Integer, nullable=False, unique=True)
+    url = db.Column(String(500), default='')
+    deleted = db.Column(Boolean, default=False)
+    deletion_date = db.Column(String(30), default='')
+    id_chain = db.Column(Text, default='[]')
+    header = db.Column(Text, default='{}')
+    content = db.Column(Text, default='')
+    mentions = db.Column(Text, default='[]')
+    history = db.Column(Text, default='[]')
+    title = db.Column(String(256), default='')
+    tags = db.Column(Text, default='[]')
