@@ -267,6 +267,41 @@ def deny_spend(coterie_id: int, spend_id: int):
     return redirect(url_for('coteries.detail', coterie_id=coterie_id))
 
 
+@bp.route('/<int:coterie_id>/edit', methods=['POST'])
+@require_staff
+def edit(coterie_id: int):
+    name = request.form.get('name', '').strip()
+    description = request.form.get('description', '').strip()
+    try:
+        db_service.update_coterie(coterie_id, name, description, get_staff_user())
+        flash('Coterie updated.', 'success')
+    except ValueError as exc:
+        flash(str(exc), 'danger')
+    return redirect(url_for('coteries.detail', coterie_id=coterie_id))
+
+
+@bp.route('/<int:coterie_id>/archive', methods=['POST'])
+@require_staff
+def archive(coterie_id: int):
+    try:
+        db_service.archive_coterie(coterie_id, get_staff_user())
+        flash('Coterie archived.', 'success')
+    except ValueError as exc:
+        flash(str(exc), 'danger')
+    return redirect(url_for('coteries.detail', coterie_id=coterie_id))
+
+
+@bp.route('/<int:coterie_id>/unarchive', methods=['POST'])
+@require_staff
+def unarchive(coterie_id: int):
+    try:
+        db_service.unarchive_coterie(coterie_id, get_staff_user())
+        flash('Coterie unarchived.', 'success')
+    except ValueError as exc:
+        flash(str(exc), 'danger')
+    return redirect(url_for('coteries.detail', coterie_id=coterie_id))
+
+
 @bp.route('/<int:coterie_id>/update-ratings', methods=['POST'])
 @require_staff
 def update_ratings(coterie_id: int):

@@ -1639,6 +1639,43 @@ class DBService:
         self.log_action(staff_user, 'update_coterie_ratings', row.name,
                         f'Chasse {chasse} / Lien {lien} / Portillon {portillon}')
 
+    def update_coterie(self, coterie_id: int, name: str,
+                       description: str, staff_user: str) -> None:
+        row = DbCoterie.query.get(coterie_id)
+        if not row:
+            raise ValueError(f'Coterie {coterie_id} not found.')
+        name = name.strip()
+        if not name:
+            raise ValueError('Coterie name cannot be blank.')
+        # Check for name collision (ignore self)
+        existing = DbCoterie.query.filter(
+            DbCoterie.name == name, DbCoterie.id != coterie_id
+        ).first()
+        if existing:
+            raise ValueError(f'A coterie named "{name}" already exists.')
+        old_name = row.name
+        row.name = name
+        row.description = description.strip()
+        db.session.commit()
+        self.log_action(staff_user, 'update_coterie', name,
+                        f'Renamed from "{old_name}" / description updated.')
+
+    def archive_coterie(self, coterie_id: int, staff_user: str) -> None:
+        row = DbCoterie.query.get(coterie_id)
+        if not row:
+            raise ValueError(f'Coterie {coterie_id} not found.')
+        row.active = False
+        db.session.commit()
+        self.log_action(staff_user, 'archive_coterie', row.name, 'Coterie archived.')
+
+    def unarchive_coterie(self, coterie_id: int, staff_user: str) -> None:
+        row = DbCoterie.query.get(coterie_id)
+        if not row:
+            raise ValueError(f'Coterie {coterie_id} not found.')
+        row.active = True
+        db.session.commit()
+        self.log_action(staff_user, 'unarchive_coterie', row.name, 'Coterie unarchived.')
+
     # ── Hunting sites ─────────────────────────────────────────────────────────
 
     def _coterie_name_map(self) -> dict[int, str]:
