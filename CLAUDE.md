@@ -8,7 +8,7 @@ Masquerade V5 play-by-post server.
 
 Adapted from the MCbN XP Tracker (MIT license). Key NYbN differences from the original:
 - XP cap of **350** per character (retirement window: 6 months after cap)
-- **6 members** per coterie (MCbN allows 5)
+- **5 members** per coterie (same as MCbN; 6+ should split into two allied coteries)
 - NYbN XP earn criteria (Posting 3 XP, Monstrous Action, Altruistic Action, Combat, Event, Writing Prompt, Staff Activity, Helper Activity)
 - Humanity spend is conditional (4 conditions, player certifies, staff verifies)
 - Ingrained Discipline Flaw support (up to 15 XP of extra powers, no sheet slot)

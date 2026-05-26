@@ -4,6 +4,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from app import db_service
 from app.auth import require_staff, get_staff_user
 from app.db import COTERIE_MAX_MEMBERS
+from app.db_service import DBService
 
 bp = Blueprint('coteries', __name__)
 
@@ -57,6 +58,17 @@ def detail(coterie_id: int):
     creation_budget = db_service.get_creation_dot_budget(coterie_id)
     pending_merits = [m for m in merits if m.status == 'Pending']
     approved_merits = [m for m in merits if m.status == 'Approved']
+
+    # Group approved merits by background name for the registry view
+    _merit_cap = DBService.COTERIE_MERIT_CAP
+    _groups: dict = {}
+    for m in approved_merits:
+        key = m.merit_name.strip().lower()
+        if key not in _groups:
+            _groups[key] = {'name': m.merit_name, 'total': 0, 'items': []}
+        _groups[key]['total'] += m.dots
+        _groups[key]['items'].append(m)
+    grouped_merits = sorted(_groups.values(), key=lambda g: g['name'].lower())
 
     def _dots(n, mx=5):
         return '●' * n + '○' * (mx - n)
@@ -116,6 +128,8 @@ def detail(coterie_id: int):
         creation_budget=creation_budget,
         pending_merits=pending_merits,
         approved_merits=approved_merits,
+        grouped_merits=grouped_merits,
+        merit_cap=_merit_cap,
     )
 
 

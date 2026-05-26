@@ -1715,6 +1715,9 @@ class DBService:
         ).all()
         return [_row_to_coterie_merit(r) for r in rows]
 
+    # Maximum dots any single background/advantage can reach in the coterie pool
+    COTERIE_MERIT_CAP = 3
+
     def submit_coterie_merit(
         self,
         coterie_id: int,
@@ -1727,23 +1730,33 @@ class DBService:
         """Record or request a coterie merit/advantage.
 
         merit_type:
-        - 'purchased': costs 3 XP/dot, creates a Pending request for staff approval.
-        - 'creation':  free from creation dot budget, auto-approved.
-        - 'donated':   staff-granted at no cost, auto-approved.
+        - 'purchased': costs 3 XP/dot per member; Pending until staff approval.
+        - 'creation':  drawn from the free creation dot budget (2/member + flaw bonus);
+                       auto-approved.
+        - 'donated':   member donates an existing personal background to the pool;
+                       no XP cost; auto-approved.
 
-        Raises ValueError if budget is exhausted (creation) or the character is
-        not a coterie member (purchased/creation).
+        Per-background cap: no single background name may exceed COTERIE_MERIT_CAP (3)
+        total dots across all sources (creation + donated + purchased), counting both
+        Approved and Pending records.
+
+        Raises ValueError if:
+        - the per-background cap would be exceeded
+        - the creation dot budget is insufficient
+        - the character is not in the coterie (for purchased/creation types)
         """
         coterie = DbCoterie.query.get(coterie_id)
         if not coterie:
             raise ValueError(f'Coterie {coterie_id} not found.')
 
-        if dots < 1 or dots > 5:
-            raise ValueError('Dots must be between 1 and 5.')
+        if dots < 1 or dots > self.COTERIE_MERIT_CAP:
+            raise ValueError(f'Dots must be between 1 and {self.COTERIE_MERIT_CAP}.')
 
         merit_type = merit_type.strip().lower()
         if merit_type not in ('purchased', 'creation', 'donated'):
             raise ValueError('Invalid merit type. Use purchased, creation, or donated.')
+
+        merit_name = merit_name.strip()
 
         # Membership check for member-owned types
         if merit_type in ('purchased', 'creation'):
@@ -1753,6 +1766,23 @@ class DBService:
             ).first()
             if not membership:
                 raise ValueError(f'{character_name} is not a member of this coterie.')
+
+        # Per-background 3-dot cap (counts Approved + Pending together)
+        existing_total = db.session.query(
+            func.coalesce(func.sum(DbCoterieMerit.dots), 0)
+        ).filter(
+            DbCoterieMerit.coterie_id == coterie_id,
+            func.lower(DbCoterieMerit.merit_name) == merit_name.lower(),
+            DbCoterieMerit.status.in_(['Approved', 'Pending']),
+        ).scalar()
+        existing_total = int(existing_total or 0)
+
+        if existing_total + dots > self.COTERIE_MERIT_CAP:
+            remaining_cap = self.COTERIE_MERIT_CAP - existing_total
+            raise ValueError(
+                f'"{merit_name}" is already at {existing_total}/{self.COTERIE_MERIT_CAP} dots. '
+                f'Only {remaining_cap} more dot(s) can be added.'
+            )
 
         xp_cost = dots * 3 if merit_type == 'purchased' else 0
 
@@ -1771,7 +1801,7 @@ class DBService:
         row = DbCoterieMerit(
             coterie_id=coterie_id,
             character_name=character_name,
-            merit_name=merit_name.strip(),
+            merit_name=merit_name,
             dots=dots,
             merit_type=merit_type,
             xp_cost=xp_cost,
