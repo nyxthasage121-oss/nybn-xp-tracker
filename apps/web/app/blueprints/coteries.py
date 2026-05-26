@@ -86,7 +86,7 @@ def detail(coterie_id: int):
         member_xp=member_xp,
         member_clan=member_clan,
         available_chars=available_chars,
-        pending_spends=pending_spends,
+        pending_spends=len(pending_spends),
         spend_history=spend_history,
         coterie_max=COTERIE_MAX_MEMBERS,
         sites=sites,
