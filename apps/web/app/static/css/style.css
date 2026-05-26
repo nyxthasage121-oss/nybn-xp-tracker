@@ -1271,6 +1271,31 @@ tr.has-clan-color {
     background-color: var(--vtm-gold);
 }
 
+/* ── 10-slot display (Blood Potency) — tighter, smaller dots ────── */
+.dot-pips-10 {
+    gap: 2px;
+    flex-wrap: wrap;
+    max-width: 130px;
+}
+
+.dot-pips-10 .dot-pip {
+    width: 8px;
+    height: 8px;
+}
+
+/* ── Humanity track — square boxes filled left to right ─────────── */
+.humanity-track .dot-pip {
+    border-radius: 2px;
+    width: 11px;
+    height: 11px;
+}
+
+.humanity-track .dot-pip.filled {
+    background-color: var(--vtm-red);
+    border-color: var(--vtm-red);
+    box-shadow: 0 0 4px rgba(204, 26, 26, 0.4);
+}
+
 /* Spend history grouped by category */
 .spend-category-heading {
     font-size: 0.68rem;

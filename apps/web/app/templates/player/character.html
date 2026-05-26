@@ -377,8 +377,12 @@
         <div class="spend-entry">
             <div class="spend-trait-name">{{ spend.trait_name }}</div>
             {% if spend.new_dots %}
-            <div class="dot-pips" title="{{ spend.current_dots or 0 }} → {{ spend.new_dots }}">
-                {% for i in range(1, 6) %}
+            {% set is_humanity = spend.spend_category == 'Humanity' %}
+            {% set is_ten = spend.spend_category in ('Blood Potency', 'Humanity') %}
+            {% set pip_max = 10 if is_ten else 5 %}
+            <div class="dot-pips{% if is_ten %} dot-pips-10{% endif %}{% if is_humanity %} humanity-track{% endif %}"
+                 title="{{ spend.current_dots or 0 }} → {{ spend.new_dots }}">
+                {% for i in range(1, pip_max + 1) %}
                 <span class="dot-pip {% if i <= spend.new_dots | int %}filled{% endif %}"></span>
                 {% endfor %}
             </div>
@@ -697,8 +701,8 @@ document.addEventListener('DOMContentLoaded', function() {
         'Thin-Blood Alchemy Formula': { level_mult: 3,  min: 1, max: 5  },
         'Advantage':                  { per_dot: 3,     min: 0, max: 5  },
         'Loresheet':                  { per_dot: 3,     min: 1, max: 5  },
-        'Blood Potency':              { multiplier: 10, min: 1, max: 10 },
-        'Humanity':                   { multiplier: 2,  min: 1, max: 10, humanity: true },
+        'Blood Potency':              { multiplier: 10, min: 0, max: 10 },
+        'Humanity':                   { multiplier: 2,  min: 0, max: 10, humanity: true },
     };
 
     function calcCost() {

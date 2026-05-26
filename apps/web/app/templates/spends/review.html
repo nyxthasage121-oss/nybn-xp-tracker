@@ -31,8 +31,11 @@
                             <span class="text-muted">{{ spend.current_dots }}</span>
                             <span class="text-muted">→</span>
                             <span class="fw-bold">{{ spend.new_dots }}</span>
-                            <div class="dot-pips ms-1">
-                                {% for i in range(1, 6) %}
+                            {% set _is_humanity = spend.spend_category == 'Humanity' %}
+                            {% set _is_ten = spend.spend_category in ('Blood Potency', 'Humanity') %}
+                            {% set _pip_max = 10 if _is_ten else 5 %}
+                            <div class="dot-pips ms-1{% if _is_ten %} dot-pips-10{% endif %}{% if _is_humanity %} humanity-track{% endif %}">
+                                {% for i in range(1, _pip_max + 1) %}
                                 <span class="dot-pip {% if i <= spend.new_dots | int %}filled{% endif %}"></span>
                                 {% endfor %}
                             </div>
