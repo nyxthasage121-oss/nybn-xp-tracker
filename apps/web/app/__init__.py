@@ -143,8 +143,14 @@ def create_app():
         sheets_sync = SheetsSyncWorker(sheets_client)
 
     # Create DB tables if they don't exist, then seed criteria on first run
+    # Wrapped in try/except because multiple gunicorn workers can race to
+    # create tables simultaneously — the loser gets "already exists" which is fine.
     with app.app_context():
-        db.create_all()
+        try:
+            db.create_all()
+        except Exception as e:
+            if 'already exists' not in str(e):
+                raise
         _apply_schema_migrations()
         db_service.seed_criteria_if_empty()
         db_service.seed_sites_if_empty()
