@@ -878,6 +878,58 @@ class DBService:
         ).order_by(DbSpendRequest.id.asc()).all()
         return [_row_to_spend(r) for r in rows]
 
+    def get_pending_coterie_spends_count(self) -> int:
+        """Count coterie spends in 'Funded' state — fully committed, awaiting staff approval."""
+        return DbCoterieSpend.query.filter(
+            func.lower(DbCoterieSpend.status) == 'funded'
+        ).count()
+
+    def get_night_status(self) -> dict:
+        """Return current open night period info for the dashboard night-status card."""
+        from datetime import date as date_cls
+        open_period = DbPlayPeriod.query.filter_by(
+            submissions_open=True, active=True, period_type='night'
+        ).order_by(DbPlayPeriod.night_number.desc()).first()
+
+        if not open_period:
+            return {
+                'has_open_night': False,
+                'night_number': 0,
+                'period_label': '',
+                'start_date': '',
+                'end_date': '',
+                'days_remaining': 0,
+                'submissions_open': False,
+                'night_xp_total': 0,
+            }
+
+        days_remaining = 0
+        try:
+            # Dates stored as YYYYMMDD
+            ed = datetime.strptime(open_period.end_date, '%Y%m%d').date()
+            days_remaining = max(0, (ed - date_cls.today()).days)
+        except (ValueError, TypeError):
+            pass
+
+        # XP approved for this period's claims
+        xp_total = db.session.query(
+            func.coalesce(func.sum(DbXPClaim.approved_xp), 0)
+        ).filter(
+            DbXPClaim.play_period == open_period.period_label,
+            func.lower(DbXPClaim.status) == 'approved',
+        ).scalar()
+
+        return {
+            'has_open_night': True,
+            'night_number': open_period.night_number,
+            'period_label': open_period.period_label,
+            'start_date': open_period.start_date,
+            'end_date': open_period.end_date,
+            'days_remaining': days_remaining,
+            'submissions_open': bool(open_period.submissions_open),
+            'night_xp_total': int(xp_total or 0),
+        }
+
     def get_spends_for_character(self, name: str) -> list[SpendRequest]:
         rows = DbSpendRequest.query.filter(
             func.lower(DbSpendRequest.character_name) == name.lower()
@@ -1111,6 +1163,23 @@ class DBService:
     def get_dashboard_data(self) -> list[dict]:
         characters = DbCharacter.query.all()
 
+        # Determine the current open night for the "no claim this period" filter
+        open_period = DbPlayPeriod.query.filter_by(
+            submissions_open=True, active=True, period_type='night'
+        ).order_by(DbPlayPeriod.night_number.desc()).first()
+        current_period_label = open_period.period_label if open_period else None
+
+        if current_period_label:
+            claimed_this_period: set[str] = {
+                r[0].lower() for r in
+                db.session.query(func.lower(DbXPClaim.character_name)).filter(
+                    DbXPClaim.play_period == current_period_label,
+                    func.lower(DbXPClaim.status) != 'denied',
+                ).all()
+            }
+        else:
+            claimed_this_period = set()
+
         ledger_agg = db.session.query(
             func.lower(DbLedgerEntry.character_name).label('name_lower'),
             func.coalesce(func.sum(DbLedgerEntry.awarded), 0).label('earned_xp'),
@@ -1167,6 +1236,10 @@ class DBService:
                 'xp_cap_reached': bool(char.xp_cap_reached),
                 'retired': bool(char.retired),
                 'retirement_deadline': char.retirement_deadline or '',
+                'no_claim_this_period': bool(
+                    char.active and current_period_label
+                    and name_lower not in claimed_this_period
+                ),
             })
 
         result.sort(key=lambda r: (not r['active'], r['character_name']))

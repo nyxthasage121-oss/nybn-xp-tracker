@@ -4,7 +4,7 @@
 <h2 class="mb-4">Dashboard</h2>
 
 <!-- Action strip -->
-{% if pending_claims > 0 or pending_spends > 0 %}
+{% if pending_claims > 0 or pending_spends > 0 or pending_coterie_spends > 0 %}
 <div class="action-strip d-flex align-items-center gap-3 flex-wrap mb-4 p-3">
     <span><i class="bi bi-bell-fill text-warning me-1"></i> <strong>Needs attention:</strong></span>
     {% if pending_claims > 0 %}
@@ -17,11 +17,16 @@
         <i class="bi bi-cart-check"></i> {{ pending_spends }} Spend{{ 's' if pending_spends != 1 }}
     </a>
     {% endif %}
+    {% if pending_coterie_spends > 0 %}
+    <a href="{{ url_for('coteries.list_coteries') }}" class="btn btn-sm btn-outline-info">
+        <i class="bi bi-people"></i> {{ pending_coterie_spends }} Coterie Spend{{ 's' if pending_coterie_spends != 1 }}
+    </a>
+    {% endif %}
 </div>
 {% endif %}
 
-<!-- Stat cards -->
-<div class="row mb-4">
+<!-- Stat cards row 1: characters / claims / spends -->
+<div class="row mb-3">
   <div class="col-md-4 mb-3">
     <div class="card stat-card stat-card-characters h-100">
       <div class="card-body d-flex align-items-center gap-3">
@@ -40,7 +45,7 @@
         <div>
           <h6 class="card-title text-muted mb-1" style="font-family: inherit; font-size: 0.8rem; letter-spacing: 0.05em; text-transform: uppercase;">Pending Claims</h6>
           <p class="card-text display-6 mb-2 lh-1">{{ pending_claims }}</p>
-          <a href="/claims/" class="btn btn-sm btn-outline-warning">View Claims</a>
+          <a href="{{ url_for('claims.pending') }}" class="btn btn-sm btn-outline-warning">View Claims</a>
         </div>
       </div>
     </div>
@@ -52,7 +57,69 @@
         <div>
           <h6 class="card-title text-muted mb-1" style="font-family: inherit; font-size: 0.8rem; letter-spacing: 0.05em; text-transform: uppercase;">Pending Spends</h6>
           <p class="card-text display-6 mb-2 lh-1">{{ pending_spends }}</p>
-          <a href="/spends/" class="btn btn-sm btn-outline-danger">View Spends</a>
+          <a href="{{ url_for('spends.pending') }}" class="btn btn-sm btn-outline-danger">View Spends</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Stat cards row 2: night status + night XP total + near-cap -->
+<div class="row mb-4">
+  <!-- Night status card -->
+  <div class="col-md-4 mb-3">
+    <div class="card h-100 border-{% if night_status.submissions_open %}success{% else %}secondary{% endif %}">
+      <div class="card-body d-flex align-items-center gap-3">
+        <i class="bi bi-moon-stars stat-icon {% if night_status.submissions_open %}text-success{% else %}text-secondary{% endif %}"></i>
+        <div class="flex-grow-1">
+          <h6 class="card-title text-muted mb-1" style="font-family: inherit; font-size: 0.8rem; letter-spacing: 0.05em; text-transform: uppercase;">Current Night</h6>
+          {% if night_status.has_open_night %}
+          <p class="card-text display-6 mb-1 lh-1">Night {{ night_status.night_number }}</p>
+          <p class="text-muted small mb-1">{{ night_status.period_label }}</p>
+          <div class="d-flex gap-2 flex-wrap align-items-center">
+            <span class="badge bg-success">Submissions Open</span>
+            {% if night_status.days_remaining > 0 %}
+            <span class="text-muted small">{{ night_status.days_remaining }} day{{ 's' if night_status.days_remaining != 1 }} left</span>
+            {% else %}
+            <span class="badge bg-warning text-dark">Ending today</span>
+            {% endif %}
+          </div>
+          {% else %}
+          <p class="card-text display-6 mb-1 lh-1 text-secondary">—</p>
+          <span class="badge bg-secondary">No open night</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Night XP total card -->
+  <div class="col-md-4 mb-3">
+    <div class="card h-100">
+      <div class="card-body d-flex align-items-center gap-3">
+        <i class="bi bi-lightning-charge stat-icon text-warning"></i>
+        <div>
+          <h6 class="card-title text-muted mb-1" style="font-family: inherit; font-size: 0.8rem; letter-spacing: 0.05em; text-transform: uppercase;">Night XP Awarded</h6>
+          {% if night_status.has_open_night %}
+          <p class="card-text display-6 mb-1 lh-1">{{ night_status.night_xp_total }}</p>
+          <p class="text-muted small mb-0">approved this night</p>
+          {% else %}
+          <p class="card-text display-6 mb-0 lh-1 text-secondary">—</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Near-cap card -->
+  <div class="col-md-4 mb-3">
+    <div class="card h-100 {% if near_cap_count > 0 %}border-warning{% endif %}">
+      <div class="card-body d-flex align-items-center gap-3">
+        <i class="bi bi-hourglass-split stat-icon {% if near_cap_count > 0 %}text-warning{% else %}text-secondary{% endif %}"></i>
+        <div>
+          <h6 class="card-title text-muted mb-1" style="font-family: inherit; font-size: 0.8rem; letter-spacing: 0.05em; text-transform: uppercase;">Near XP Cap</h6>
+          <p class="card-text display-6 mb-1 lh-1 {% if near_cap_count > 0 %}text-warning{% endif %}">{{ near_cap_count }}</p>
+          <p class="text-muted small mb-0">within 30 XP of retirement</p>
         </div>
       </div>
     </div>
@@ -64,9 +131,19 @@
   <div class="btn-group me-2" role="group" aria-label="Filter characters">
     <button type="button" class="btn btn-sm btn-outline-secondary active" data-filter="all">All</button>
     <button type="button" class="btn btn-sm btn-outline-secondary" data-filter="active">Active</button>
-    <button type="button" class="btn btn-sm btn-outline-secondary" data-filter="no-claim">
-      <i class="bi bi-exclamation-circle"></i> No Claims
+    <button type="button" class="btn btn-sm btn-outline-warning" data-filter="no-claim">
+      <i class="bi bi-exclamation-circle"></i> No Claims (ever)
     </button>
+    {% if night_status.has_open_night %}
+    <button type="button" class="btn btn-sm btn-outline-danger" data-filter="no-claim-period">
+      <i class="bi bi-clock"></i> No Claim N{{ night_status.night_number }}
+    </button>
+    {% endif %}
+    {% if near_cap_count > 0 %}
+    <button type="button" class="btn btn-sm btn-outline-warning" data-filter="near-cap">
+      <i class="bi bi-hourglass-split"></i> Near Cap
+    </button>
+    {% endif %}
   </div>
   <input type="text" class="form-control form-control-sm" id="table-search"
          placeholder="Search characters..." style="max-width: 240px;">
@@ -92,12 +169,22 @@
          {% else %} class="has-clan-color clan-{{ c.clan | lower | replace(' ', '-') }}"{% endif %}
           data-href="{{ url_for('roster.detail', name=c.character_name) }}"
           data-active="{{ 'true' if c.active else 'false' }}"
-          data-no-claim="{{ 'true' if not c.last_submission else 'false' }}">
+          data-no-claim="{{ 'true' if not c.last_submission else 'false' }}"
+          data-no-claim-period="{{ 'true' if c.no_claim_this_period else 'false' }}"
+          data-near-cap="{{ 'true' if c.active and not c.xp_cap_reached and c.xp_to_cap <= 30 else 'false' }}">
         <td>
           <a href="{{ url_for('roster.detail', name=c.character_name) }}" onclick="event.stopPropagation()">
             {{ c.character_name }}
           </a>
-          {% if not c.last_submission and c.active %}
+          {% if c.xp_cap_reached %}
+          <span class="badge bg-secondary ms-1" title="Retirement cap reached" style="font-size:0.65rem;">
+            <i class="bi bi-mortarboard"></i> Retired
+          </span>
+          {% elif c.active and c.xp_to_cap <= 30 %}
+          <span class="badge bg-warning text-dark ms-1" title="{{ c.xp_to_cap }} XP to cap" style="font-size:0.65rem;">
+            <i class="bi bi-hourglass-split"></i> {{ c.xp_to_cap }} to cap
+          </span>
+          {% elif not c.last_submission and c.active %}
           <span class="badge bg-warning text-dark ms-1" title="No claims submitted" style="font-size:0.65rem;">
             <i class="bi bi-exclamation"></i>
           </span>
@@ -136,10 +223,14 @@ document.addEventListener('DOMContentLoaded', function () {
             const matchesSearch = !q || name.includes(q);
             const isActive = row.dataset.active === 'true';
             const noClaim = row.dataset.noClaim === 'true';
+            const noClaimPeriod = row.dataset.noClaimPeriod === 'true';
+            const nearCap = row.dataset.nearCap === 'true';
 
             let matchesFilter = true;
-            if (activeFilter === 'active') matchesFilter = isActive;
-            if (activeFilter === 'no-claim') matchesFilter = noClaim && isActive;
+            if (activeFilter === 'active')           matchesFilter = isActive;
+            if (activeFilter === 'no-claim')         matchesFilter = noClaim && isActive;
+            if (activeFilter === 'no-claim-period')  matchesFilter = noClaimPeriod;
+            if (activeFilter === 'near-cap')         matchesFilter = nearCap;
 
             row.style.display = (matchesSearch && matchesFilter) ? '' : 'none';
         });

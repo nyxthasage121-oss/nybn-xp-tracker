@@ -24,12 +24,23 @@ def index():
     dashboard_data = db_service.get_dashboard_data()
     pending_claims = len(db_service.get_pending_claims())
     pending_spends = len(db_service.get_pending_spends())
+    pending_coterie_spends = db_service.get_pending_coterie_spends_count()
+    night_status = db_service.get_night_status()
+
+    # Near-cap count: active chars within 30 XP of cap, not yet retired
+    near_cap_count = sum(
+        1 for c in dashboard_data
+        if c['active'] and not c['xp_cap_reached'] and c['xp_to_cap'] <= 30
+    )
 
     return render_template(
         'dashboard.html',
         characters=dashboard_data,
         pending_claims=pending_claims,
         pending_spends=pending_spends,
+        pending_coterie_spends=pending_coterie_spends,
+        night_status=night_status,
+        near_cap_count=near_cap_count,
     )
 
 
