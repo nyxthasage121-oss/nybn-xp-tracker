@@ -164,7 +164,7 @@ def toggle_submissions(label):
 
     status = 'opened' if new_value == 'TRUE' else 'closed'
     flash(f'Submissions {status} for {label}.', 'success')
-    return redirect(url_for('periods.list_periods'))
+    return redirect(request.referrer or url_for('periods.list_periods'))
 
 
 @bp.route('/<path:label>/toggle-active', methods=['POST'])

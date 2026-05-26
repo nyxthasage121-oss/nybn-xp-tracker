@@ -574,6 +574,34 @@ def activate(name):
     return redirect(url_for('roster.detail', name=name))
 
 
+@bp.route('/<name>/retire', methods=['POST'])
+@require_staff
+def retire(name):
+    """Retire a character — permanently marks them retired and deactivates them."""
+    char = db_service.get_character(name)
+    if not char:
+        abort(404)
+    if char.retired:
+        flash(f'{name} is already retired.', 'warning')
+        return redirect(url_for('roster.detail', name=name))
+
+    staff = get_staff_user()
+    try:
+        db_service.retire_character(name, staff)
+    except ValueError as e:
+        flash(str(e), 'danger')
+        return redirect(url_for('roster.detail', name=name))
+
+    if sheets_sync:
+        sheets_sync.sync_log_action(
+            staff_user=staff, action_type='retire_character',
+            target=name, details=f'Retired {name}',
+        )
+
+    flash(f'{name} has been retired. Their story is complete. 🎓', 'success')
+    return redirect(url_for('roster.detail', name=name))
+
+
 @bp.route('/<name>/delete', methods=['POST'])
 @require_staff
 def delete(name):

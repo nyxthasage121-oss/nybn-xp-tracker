@@ -76,7 +76,7 @@
           {% if night_status.has_open_night %}
           <p class="card-text display-6 mb-1 lh-1">Night {{ night_status.night_number }}</p>
           <p class="text-muted small mb-1">{{ night_status.period_label }}</p>
-          <div class="d-flex gap-2 flex-wrap align-items-center">
+          <div class="d-flex gap-2 flex-wrap align-items-center mb-2">
             <span class="badge bg-success">Submissions Open</span>
             {% if night_status.days_remaining > 0 %}
             <span class="text-muted small">{{ night_status.days_remaining }} day{{ 's' if night_status.days_remaining != 1 }} left</span>
@@ -84,6 +84,12 @@
             <span class="badge bg-warning text-dark">Ending today</span>
             {% endif %}
           </div>
+          <form method="POST" action="{{ url_for('periods.toggle_submissions', label=night_status.period_label) }}"
+                data-confirm="Close submissions for {{ night_status.period_label }}? Players will no longer be able to submit claims.">
+            <button type="submit" class="btn btn-sm btn-outline-danger">
+              <i class="bi bi-lock"></i> Close submissions
+            </button>
+          </form>
           {% else %}
           <p class="card-text display-6 mb-1 lh-1 text-secondary">—</p>
           <span class="badge bg-secondary">No open night</span>

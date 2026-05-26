@@ -89,6 +89,14 @@
         </button>
       </form>
       {% endif %}
+      {% if not char.retired %}
+      <form method="POST" action="{{ url_for('roster.retire', name=char.character_name) }}" class="d-inline">
+        <button type="submit" class="btn btn-sm btn-danger"
+                data-confirm="Retire {{ char.character_name }}? This permanently marks them as retired and deactivates their character. This cannot be undone.">
+          <i class="bi bi-mortarboard"></i> Retire
+        </button>
+      </form>
+      {% endif %}
     </div>
   </div>
 
