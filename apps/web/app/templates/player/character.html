@@ -781,6 +781,11 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             currentDots.disabled = false;
             newDots.disabled = false;
+            // Always reset to valid defaults for the new category so the browser
+            // never starts in an out-of-range state (which makes the caret jump
+            // to the max on the first up-arrow press).
+            currentDots.value = rules.min;
+            newDots.value = rules.min + 1;
         }
 
         // Show/hide Humanity conditions
@@ -788,9 +793,9 @@ document.addEventListener('DOMContentLoaded', function() {
             humanityGroup.classList.toggle('d-none', !rules.humanity);
         }
 
-        // For Humanity: keep newDots synced to currentDots + 1
+        // For Humanity: lock newDots to currentDots + 1 (one dot at a time rule)
         if (rules.humanity) {
-            newDots.value = (parseInt(currentDots.value) || 0) + 1;
+            newDots.value = parseInt(currentDots.value) + 1;
         }
     }
 
@@ -802,7 +807,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const cat = spendCategory.value;
         const rules = XP_RULES[cat];
         if (rules && rules.humanity) {
-            newDots.value = (parseInt(currentDots.value) || 0) + 1;
+            // Clamp to valid range first, then lock new to current + 1
+            const cur = Math.max(rules.min, Math.min(parseInt(this.value) || rules.min, rules.max - 1));
+            this.value = cur;
+            newDots.value = cur + 1;
         }
         calcCost();
     });
