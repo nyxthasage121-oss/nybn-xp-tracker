@@ -29,6 +29,12 @@ def my_characters():
 
     calendar = get_calendar()
 
+    # Coterie membership for each of the player's characters
+    coteries = {
+        char.character_name: db_service.get_coterie_for_character(char.character_name)
+        for char in my_chars
+    }
+
     # Staff also see a full character search
     if check_is_staff():
         all_characters = db_service.get_active_characters()
@@ -40,6 +46,7 @@ def my_characters():
             show_all=True,
             open_periods=open_periods,
             calendar=calendar,
+            coteries=coteries,
         )
 
     if not my_chars:
@@ -54,6 +61,7 @@ def my_characters():
         show_all=False,
         open_periods=open_periods,
         calendar=calendar,
+        coteries=coteries,
     )
 
 
