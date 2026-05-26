@@ -146,6 +146,9 @@ class Coterie:
     created_by: str = ''
     active: bool = True
     members: list = field(default_factory=list)   # list of character_name strings
+    chasse: int = 0
+    lien: int = 0
+    portillon: int = 0
 
 
 @dataclass
@@ -164,6 +167,19 @@ class CoterieSpend:
     review_date: str = ''
     st_notes: str = ''
     timestamp: str = ''
+
+
+@dataclass
+class HuntingSite:
+    site_id: int = 0
+    name: str = ''
+    borough: str = ''
+    predator_types: list = field(default_factory=list)  # [{"type": str, "dc": int}]
+    bonus: str = ''
+    coterie_id: int | None = None
+    coterie_name: str = ''
+    active: bool = True
+    sort_order: int = 0
 
 
 # ── NYbN seed criteria (used to pre-populate the criteria table on first run) ─
@@ -261,6 +277,106 @@ NYBN_SEED_CRITERIA = [
     },
 ]
 
+
+# ── NYbN seed hunting sites ───────────────────────────────────────────────────
+
+NYBN_SEED_SITES = [
+    # ── Manhattan ──────────────────────────────────────────────────────────────
+    {'name': 'Inwood Park / Hudson Heights', 'borough': 'Manhattan', 'sort_order': 1,
+     'predator_types': [{'type': 'Cleaver', 'dc': 3}, {'type': 'Farmer', 'dc': 3}, {'type': 'Graverobber', 'dc': 2}],
+     'bonus': 'Characters gain +1 to Stealth or Survival rolls when acting within forested, stone-lined, or shadowed terrain. Once per story, gain +2 bonus dice on a roll to hide a body, escape pursuit, or perform a ritual/ceremony outdoors.'},
+    {'name': 'Harlem', 'borough': 'Manhattan', 'sort_order': 2,
+     'predator_types': [{'type': 'Osiris', 'dc': 2}, {'type': 'Sandman', 'dc': 3}, {'type': 'Grim Reaper', 'dc': 3}],
+     'bonus': 'Characters gain +1 to Presence or Persuasion rolls when appealing to passion, history, or personal belief. Once per story, if invoking cultural or spiritual meaning in a scene, you may automatically win a tie on a Social test.'},
+    {'name': 'Central Park', 'borough': 'Manhattan', 'sort_order': 3,
+     'predator_types': [{'type': 'Alley Cat', 'dc': 3}, {'type': 'Pursuer', 'dc': 3}, {'type': 'Farmer', 'dc': 2}],
+     'bonus': 'Characters can establish hidden sanctuaries within the park, granting a +1 bonus to rolls made to detect intruders or maintain secrecy.'},
+    {'name': 'Times Square / Midtown', 'borough': 'Manhattan', 'sort_order': 4,
+     'predator_types': [{'type': 'Roadside Killer', 'dc': 3}, {'type': 'Pursuer', 'dc': 3}, {'type': 'Trapdoor', 'dc': 2}],
+     'bonus': 'Characters can blend in with the constant flow of travelers, granting a +1 bonus to rolls made to avoid detection or maintain a low profile.'},
+    {'name': 'The Villages', 'borough': 'Manhattan', 'sort_order': 5,
+     'predator_types': [{'type': 'Bagger', 'dc': 3}, {'type': 'Siren', 'dc': 2}, {'type': 'Consensualist', 'dc': 3}],
+     'bonus': 'Once per story, character may frequent a bar or establishment in the Villages and gain the High-Functioning Addict Merit for the night. Characters with the Addiction Flaw can disregard it while in this location.'},
+    {'name': 'Fi-Di (Civic Center)', 'borough': 'Manhattan', 'sort_order': 6,
+     'predator_types': [{'type': 'Extortionist', 'dc': 2}, {'type': 'Scene Queen', 'dc': 3}, {'type': 'Montero', 'dc': 3}],
+     'bonus': 'Characters exploiting the legal or financial systems of Wall Street gain +1 to Subterfuge or Finance rolls when bribing, navigating bureaucracy, or hiding their trail. Once per night, reroll any failed Social roll involving power dynamics, contracts, or financials.'},
+    # ── Brooklyn ───────────────────────────────────────────────────────────────
+    {'name': 'Brooklyn Heights', 'borough': 'Brooklyn', 'sort_order': 7,
+     'predator_types': [{'type': 'Siren', 'dc': 2}, {'type': 'Scene Queen', 'dc': 3}, {'type': 'Consensualist', 'dc': 3}],
+     'bonus': 'Once per night, characters may arrange clandestine meetings or exchanges along the Brooklyn Heights Promenade. Characters receive a +1 bonus to rolls made to conceal such scenes from prying eyes.'},
+    {'name': 'Prospect Heights', 'borough': 'Brooklyn', 'sort_order': 8,
+     'predator_types': [{'type': 'Sandman', 'dc': 2}, {'type': 'Farmer', 'dc': 3}, {'type': 'Trapdoor', 'dc': 3}],
+     'bonus': 'Once per Chronicle, characters may leverage connections in Prospect Heights to gain a temporary Ally whose level equals their Lien Rating for the night. Afterward, the coterie\'s Lien Rating is blanked and recovers at 1-dot per Night.'},
+    {'name': 'Coney Island', 'borough': 'Brooklyn', 'sort_order': 9,
+     'predator_types': [{'type': 'Alley Cat', 'dc': 2}, {'type': 'Pursuer', 'dc': 3}, {'type': 'Osiris', 'dc': 3}],
+     'bonus': 'Characters can reroll one failed Manipulation or Subterfuge roll per session when exploiting the chaotic and festive environment. Once per story, gain temporary 1-dot Haven benefits for a night.'},
+    {'name': 'New Lots', 'borough': 'Brooklyn', 'sort_order': 10,
+     'predator_types': [{'type': 'Alley Cat', 'dc': 3}, {'type': 'Extortionist', 'dc': 2}, {'type': 'Roadside Killer', 'dc': 3}],
+     'bonus': 'Characters gain a +1 bonus to Intimidation or Streetwise rolls when hunting in high-crime or low-surveillance zones. Once per night, characters may reroll a failed Composure or Frenzy check triggered in the area.'},
+    {'name': 'Greenwood Cemetery', 'borough': 'Brooklyn', 'sort_order': 11,
+     'predator_types': [{'type': 'Graverobber', 'dc': 2}, {'type': 'Cleaver', 'dc': 3}, {'type': 'Montero', 'dc': 3}],
+     'bonus': 'Once per Chronicle, characters who spend at least a scene within the cemetery\'s grounds may regain 1 point of Humanity, reflecting the contemplative atmosphere and connection to mortality.'},
+    {'name': 'Park Slope', 'borough': 'Brooklyn', 'sort_order': 12,
+     'predator_types': [{'type': 'Bagger', 'dc': 2}, {'type': 'Grim Reaper', 'dc': 3}, {'type': 'Cleaver', 'dc': 3}],
+     'bonus': 'Characters receive an additional point of Willpower restored during their Daysleep, as this location provides a safe space for rest and recuperation.'},
+    # ── Queens ─────────────────────────────────────────────────────────────────
+    {'name': 'Long Island City', 'borough': 'Queens', 'sort_order': 13,
+     'predator_types': [{'type': 'Scene Queen', 'dc': 3}, {'type': 'Consensualist', 'dc': 3}, {'type': 'Cleaver', 'dc': 3}],
+     'bonus': 'Once per story, characters may use the skyline as a backdrop for a social engagement, gaining a +1 bonus to Persuasion rolls when trying to impress or intimidate others through the illusion of wealth or status.'},
+    {'name': 'La Guardia Airport', 'borough': 'Queens', 'sort_order': 14,
+     'predator_types': [{'type': 'Roadside Killer', 'dc': 2}, {'type': 'Osiris', 'dc': 3}, {'type': 'Montero', 'dc': 3}],
+     'bonus': 'Once per Chronicle, characters may feed on international travelers and glean information, gaining a temporary 1-dot Contacts (international). Characters may reroll a single die on a Frenzy check once per story while in La Guardia.'},
+    {'name': 'Flushing', 'borough': 'Queens', 'sort_order': 15,
+     'predator_types': [{'type': 'Bagger', 'dc': 2}, {'type': 'Farmer', 'dc': 3}, {'type': 'Grim Reaper', 'dc': 3}],
+     'bonus': 'Once per story, gain a +1 bonus to Etiquette or Manipulation rolls involving cultural navigation within the Asian community. Characters receive a +1 bonus to Willpower recovery rolls if they spend a scene meditating in the Queens Botanical Gardens.'},
+    {'name': 'Middle Village', 'borough': 'Queens', 'sort_order': 16,
+     'predator_types': [{'type': 'Graverobber', 'dc': 2}, {'type': 'Sandman', 'dc': 3}, {'type': 'Trapdoor', 'dc': 3}],
+     'bonus': 'Characters gain +1 to Occult or Stealth rolls when operating within cemeteries or consecrated grounds. Once per story, after spending 10 minutes in solitude among the graves, a character may ask a yes/no question about a current mystery and receive a cryptic omen (ST discretion).'},
+    {'name': 'Jamaica', 'borough': 'Queens', 'sort_order': 17,
+     'predator_types': [{'type': 'Alley Cat', 'dc': 3}, {'type': 'Osiris', 'dc': 2}, {'type': 'Pursuer', 'dc': 3}],
+     'bonus': 'Characters gain +1 to Persuasion or Insight rolls when appealing to justice, rebellion, or principle. Once per story, you may reroll a failed Social roll if defending a Conviction or inspiring others toward a cause.'},
+    {'name': 'Steinway', 'borough': 'Queens', 'sort_order': 18,
+     'predator_types': [{'type': 'Extortionist', 'dc': 3}, {'type': 'Scene Queen', 'dc': 2}, {'type': 'Siren', 'dc': 3}],
+     'bonus': 'Characters gain +1 to Etiquette or Performance rolls when engaging through shared culture, faith, or artistic representation. Once per story, gain 1 temporary dot of Herd or Allies (lasting 1 night) by invoking community ties.'},
+    # ── The Bronx ──────────────────────────────────────────────────────────────
+    {'name': 'Pelham Bay', 'borough': 'The Bronx', 'sort_order': 19,
+     'predator_types': [{'type': 'Farmer', 'dc': 2}, {'type': 'Pursuer', 'dc': 3}, {'type': 'Osiris', 'dc': 3}],
+     'bonus': 'Characters can use the nearby Pelham Bay Park to establish sanctuaries, offering protection from detection. Characters gain a +1 bonus to rolls for remaining unseen or maintaining haven secrecy.'},
+    {'name': 'Woodlawn Cemetery', 'borough': 'The Bronx', 'sort_order': 20,
+     'predator_types': [{'type': 'Graverobber', 'dc': 2}, {'type': 'Grim Reaper', 'dc': 3}, {'type': 'Cleaver', 'dc': 3}],
+     'bonus': 'Characters investigating old graves or tombs may uncover historical secrets. Once per story, roll Investigation or Occult with a +2 bonus to learn something valuable about the dead buried here.'},
+    {'name': 'New York Botanical Park (Bronx Park)', 'borough': 'The Bronx', 'sort_order': 21,
+     'predator_types': [{'type': 'Farmer', 'dc': 2}, {'type': 'Montero', 'dc': 3}, {'type': 'Trapdoor', 'dc': 3}],
+     'bonus': 'Characters gain a +1 bonus to healing rolls or superficial damage recovery if they feed or rest within the Gardens for an entire scene.'},
+    {'name': 'Yankee Stadium', 'borough': 'The Bronx', 'sort_order': 22,
+     'predator_types': [{'type': 'Extortionist', 'dc': 3}, {'type': 'Siren', 'dc': 3}, {'type': 'Roadside Killer', 'dc': 3}],
+     'bonus': 'Characters gain +1 to Strength or Charisma rolls when asserting dominance, organizing groups, or inspiring fear/respect. Once per story, after proving themselves in a physical or social challenge near a sporting event, treat your next roll as if you rolled one additional success.'},
+    {'name': 'Fordham University / Belmont', 'borough': 'The Bronx', 'sort_order': 23,
+     'predator_types': [{'type': 'Bagger', 'dc': 2}, {'type': 'Scene Queen', 'dc': 3}, {'type': 'Consensualist', 'dc': 3}],
+     'bonus': 'Characters who establish contacts within Fordham University may increase their Influence (Academia) by 1 dot temporarily for a single story, representing favors granted by professors or researchers.'},
+    {'name': 'Parkside Housing Project', 'borough': 'The Bronx', 'sort_order': 24,
+     'predator_types': [{'type': 'Sandman', 'dc': 2}, {'type': 'Alley Cat', 'dc': 3}, {'type': 'Pursuer', 'dc': 3}],
+     'bonus': 'The neighborhood\'s rough environment fosters resilience. Characters feeding here gain a +1 bonus to resisting Frenzy checks when in impoverished areas for the rest of the night.'},
+    # ── Staten Island ──────────────────────────────────────────────────────────
+    {'name': 'Arlington', 'borough': 'Staten Island', 'sort_order': 25,
+     'predator_types': [{'type': 'Sandman', 'dc': 2}, {'type': 'Cleaver', 'dc': 3}, {'type': 'Consensualist', 'dc': 3}],
+     'bonus': 'Once per Chronicle, a character may gain temporary access to Resources, increasing their rating by 1-dot for a night.'},
+    {'name': 'Empire Outlets', 'borough': 'Staten Island', 'sort_order': 26,
+     'predator_types': [{'type': 'Scene Queen', 'dc': 2}, {'type': 'Siren', 'dc': 3}, {'type': 'Extortionist', 'dc': 3}],
+     'bonus': 'Kindred with the Fame or Influence backgrounds gain a +1 bonus when using these backgrounds at Empire Outlets due to the site\'s association with wealth and status.'},
+    {'name': 'University Hospital — North Campus', 'borough': 'Staten Island', 'sort_order': 27,
+     'predator_types': [{'type': 'Grim Reaper', 'dc': 3}, {'type': 'Bagger', 'dc': 2}, {'type': 'Osiris', 'dc': 3}],
+     'bonus': 'Characters with medical backgrounds (Medicine, Academics) can access state-of-the-art resources. Once per story, use the hospital to reduce Aggravated Damage by 1.'},
+    {'name': 'Staten Island Mall', 'borough': 'Staten Island', 'sort_order': 28,
+     'predator_types': [{'type': 'Roadside Killer', 'dc': 3}, {'type': 'Trapdoor', 'dc': 2}, {'type': 'Siren', 'dc': 3}],
+     'bonus': 'Characters gain +1 to Awareness or Subterfuge rolls while observing or moving through suburban consumer spaces. Once per story, reroll one failed Wits-based roll per night if acting from a position of passive observation.'},
+    {'name': "Prince's Bay Lighthouse", 'borough': 'Staten Island', 'sort_order': 29,
+     'predator_types': [{'type': 'Pursuer', 'dc': 3}, {'type': 'Alley Cat', 'dc': 3}, {'type': 'Trapdoor', 'dc': 2}],
+     'bonus': 'Kindred with occult knowledge may use the lighthouse as a focal point for rituals or to communicate with spirits of those lost at sea. Grants a +1 bonus to Occult-related rolls once per story.'},
+    {'name': 'Silver Lake Park', 'borough': 'Staten Island', 'sort_order': 30,
+     'predator_types': [{'type': 'Graverobber', 'dc': 3}, {'type': 'Montero', 'dc': 2}, {'type': 'Farmer', 'dc': 3}],
+     'bonus': 'Characters with ties to necromancy or death-related disciplines receive a +1 bonus to Oblivion rolls while in the park. The historic immigrant burial grounds have imbued the area with latent supernatural energy.'},
+]
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 

@@ -160,6 +160,8 @@ def detail(name):
         total_xp=xp['total_xp'],
         total_spends=xp['total_spends'] + xp['ledger_spent'],
         available_xp=xp['available_xp'],
+        xp_to_cap=xp.get('xp_to_cap', 350),
+        cap_reached=xp.get('cap_reached', False),
         ledger=ledger,
     )
 

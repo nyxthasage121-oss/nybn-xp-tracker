@@ -268,11 +268,23 @@ def claim_context():
     characters.sort(key=lambda c: c.character_name.lower())
     open_periods = _open_periods_desc()
 
+    criteria = db_service.get_active_criteria()
     return jsonify(
         {
             'activeCharacters': [c.character_name for c in characters],
             'openPeriods': [p.period_label for p in open_periods],
             'currentNight': open_periods[0].period_label if open_periods else None,
+            'activeCriteria': [
+                {
+                    'id': crit.criteria_id,
+                    'label': crit.label,
+                    'xpValue': crit.xp_value,
+                    'category': crit.category,
+                    'requiresRpLinks': crit.requires_rp_links,
+                    'requiresTextNote': crit.requires_text_note,
+                }
+                for crit in criteria
+            ],
         }
     )
 
@@ -344,6 +356,8 @@ def character_summary(name: str):
             'totalXp': totals['total_xp'],
             'totalSpends': totals['total_spends'] + totals['ledger_spent'],
             'availableXp': totals['available_xp'],
+            'xpToCap': totals['xp_to_cap'],
+            'capReached': totals['cap_reached'],
         }
     )
 
@@ -414,7 +428,7 @@ def review_events():
                 'reviewedAtEpoch': reviewed_epoch,
                 'staffNotes': claim.st_notes,
                 'playPeriod': claim.play_period,
-                'requestedXp': claim.xp_claimed,
+                'requestedXp': claim.computed_xp,
                 'approvedXp': claim.approved_xp,
             }
         )
@@ -528,10 +542,27 @@ def submit_claim():
         return error
     character_name = str(payload.get('characterName', '')).strip()
     play_period = str(payload.get('playPeriod', '')).strip()
-    categories = payload.get('categories')
+    criteria_ids_raw = payload.get('criteriaIds')
+    rp_links_raw = payload.get('rpLinks', [])
+    path = str(payload.get('path', 'none')).strip()
+    helper_note = str(payload.get('helperNote', '')).strip()
 
-    if not character_name or not play_period or not isinstance(categories, dict):
-        return jsonify({'error': 'characterName, playPeriod, and categories are required'}), 400
+    if not character_name or not play_period or not isinstance(criteria_ids_raw, list):
+        return jsonify({'error': 'characterName, playPeriod, and criteriaIds (list of ints) are required'}), 400
+
+    try:
+        criteria_ids = [int(cid) for cid in criteria_ids_raw]
+    except (TypeError, ValueError):
+        return jsonify({'error': 'criteriaIds must be a list of integers'}), 400
+
+    if not criteria_ids:
+        return jsonify({'error': 'At least one criterion must be selected'}), 400
+    if len(criteria_ids) > 20:
+        return jsonify({'error': 'Too many criteria IDs in payload'}), 400
+
+    rp_links = [str(ln).strip() for ln in rp_links_raw if str(ln).strip()] if isinstance(rp_links_raw, list) else []
+    if path not in ('none', 'staff', 'helper'):
+        path = 'none'
 
     char = db_service.get_character(character_name)
     if not char:
@@ -546,24 +577,24 @@ def submit_claim():
     if not period:
         return jsonify({'error': 'Play period is not open for submissions'}), 400
 
-    normalized: dict[str, str] = {}
-    for key, value in categories.items():
-        if not isinstance(key, str):
-            continue
-        normalized[key.strip()] = str(value).strip() if value is not None else ''
-    if len(normalized) > 20:
-        return jsonify({'error': 'Too many claim categories in payload'}), 400
-
     try:
-        db_service.submit_xp_claim(character_name, play_period, normalized)
+        claim = db_service.submit_xp_claim(
+            character_name=character_name,
+            play_period=play_period,
+            claimed_criteria_ids=criteria_ids,
+            rp_links=rp_links,
+            path=path,
+            helper_note=helper_note,
+        )
         if sheets_sync:
-            sheets_sync.sync_add_claim(character_name, play_period, normalized)
+            sheets_sync.sync_add_claim(character_name, play_period, {})
         db_service.log_action(
             staff_user=f'bot-api:{requester_discord_id}',
             action_type='bot_claim_submitted',
             target=character_name,
             details=(
-                f'Claim submitted for {play_period} by '
+                f'Claim submitted for {play_period} ({claim.computed_xp} XP, '
+                f'{len(criteria_ids)} criteria) by '
                 f'{effective_name or requester_discord_name or requester_discord_id}'
             ),
         )
@@ -580,7 +611,7 @@ def submit_claim():
     except ValueError as exc:
         return jsonify({'error': str(exc)}), 400
 
-    return jsonify({'ok': True, 'message': 'Claim submitted'}), 201
+    return jsonify({'ok': True, 'message': 'Claim submitted', 'computedXp': claim.computed_xp}), 201
 
 
 @bp.route('/spends', methods=['POST'])
@@ -613,7 +644,10 @@ def submit_spend():
     if current_dots < 0 or new_dots < 0 or new_dots > 10:
         return jsonify({'error': 'Dot ratings must be between 0 and 10'}), 400
 
-    is_in_clan = bool(payload.get('isInClan', False))
+    # Humanity conditional flags (bot passes these when category == 'Humanity')
+    humanity_no_frenzy = bool(payload.get('humanityNoFrenzy', False))
+    humanity_no_stains = bool(payload.get('humanityNoStains', False))
+    humanity_humane_act = bool(payload.get('humanityHumaneAct', False))
 
     char = db_service.get_character(character_name)
     if not char:
@@ -628,8 +662,10 @@ def submit_spend():
             trait_name=trait_name,
             current_dots=current_dots,
             new_dots=new_dots,
-            is_in_clan=is_in_clan,
             justification=justification,
+            humanity_no_frenzy=humanity_no_frenzy,
+            humanity_no_stains=humanity_no_stains,
+            humanity_humane_act=humanity_humane_act,
         )
         if sheets_sync:
             sheets_sync.sync_add_spend(
@@ -638,7 +674,6 @@ def submit_spend():
                 trait_name=trait_name,
                 current_dots=current_dots,
                 new_dots=new_dots,
-                is_in_clan=is_in_clan,
                 justification=justification,
             )
         db_service.log_action(

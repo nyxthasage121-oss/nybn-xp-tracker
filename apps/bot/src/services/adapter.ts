@@ -33,6 +33,8 @@ const summarySchema = z.object({
   totalXp: z.number(),
   totalSpends: z.number(),
   availableXp: z.number(),
+  xpToCap: z.number().default(350),
+  capReached: z.boolean().default(false),
 });
 
 const claimContextSchema = z.object({

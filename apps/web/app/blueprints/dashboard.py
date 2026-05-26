@@ -147,6 +147,21 @@ def discord_callback():
         return redirect(next_url)
 
 
+@bp.route('/dev/login')
+def dev_login():
+    """Dev-only instant login — only works when FLASK_DEBUG=true. Never available in prod."""
+    if not current_app.debug:
+        return redirect(url_for('dashboard.login'))
+    session.clear()
+    session['authenticated'] = True
+    session['staff_user'] = 'Dev User'
+    session['discord_id'] = '000000000000000000'
+    session['discord_name'] = 'Dev User'
+    session.permanent = True
+    flash('Logged in as Dev User (debug mode).', 'success')
+    return redirect(url_for('dashboard.index'))
+
+
 @bp.route('/logout')
 def logout():
     """Clear session and redirect to login."""

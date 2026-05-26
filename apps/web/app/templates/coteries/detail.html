@@ -1,0 +1,550 @@
+{% extends "base.html" %}
+
+{% block title %}{{ coterie.name }} — NYbN XP Tracker{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+
+  <!-- ═══ Coterie Hero ═══ -->
+  <div class="d-flex justify-content-between align-items-start gap-3 mb-4 flex-wrap">
+    <div>
+      <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+        <h1 class="mb-0">{{ coterie.name }}</h1>
+        {% if coterie.active %}
+        <span class="badge bg-success">Active</span>
+        {% else %}
+        <span class="badge bg-secondary">Inactive</span>
+        {% endif %}
+        <span class="badge {% if coterie.members | length >= coterie_max %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+          {{ coterie.members | length }}/{{ coterie_max }} members
+        </span>
+      </div>
+      {% if coterie.description %}
+      <p class="text-muted mb-0">{{ coterie.description }}</p>
+      {% endif %}
+      <small class="text-muted">Created {{ coterie.created_at }}{% if coterie.created_by %} by {{ coterie.created_by }}{% endif %}</small>
+    </div>
+    <a href="{{ url_for('coteries.list_coteries') }}" class="btn btn-sm btn-outline-secondary flex-shrink-0">
+      <i class="bi bi-arrow-left"></i> Coteries
+    </a>
+  </div>
+
+  <!-- ═══ Coterie Ratings + Sites ═══ -->
+  <div class="row mb-4">
+    <!-- Ratings card -->
+    <div class="col-md-6 mb-3">
+      <div class="card h-100">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0"><i class="bi bi-bar-chart-steps"></i> Ratings</h5>
+          <button class="btn btn-sm btn-outline-secondary"
+                  data-bs-toggle="collapse" data-bs-target="#edit-ratings-form">
+            <i class="bi bi-pencil"></i> Edit
+          </button>
+        </div>
+        <div class="card-body">
+          <div class="d-flex gap-4 mb-3">
+            <div class="text-center">
+              <div class="text-muted small mb-1">Chasse</div>
+              <div class="fs-5" style="letter-spacing:2px">{{ '●' * coterie.chasse }}{{ '○' * (5 - coterie.chasse) }}</div>
+              <div class="text-muted small">{{ coterie.chasse }}/5</div>
+            </div>
+            <div class="text-center">
+              <div class="text-muted small mb-1">Lien</div>
+              <div class="fs-5" style="letter-spacing:2px">{{ '●' * coterie.lien }}{{ '○' * (5 - coterie.lien) }}</div>
+              <div class="text-muted small">{{ coterie.lien }}/5</div>
+            </div>
+            <div class="text-center">
+              <div class="text-muted small mb-1">Portillon</div>
+              <div class="fs-5" style="letter-spacing:2px">{{ '●' * coterie.portillon }}{{ '○' * (5 - coterie.portillon) }}</div>
+              <div class="text-muted small">{{ coterie.portillon }}/5</div>
+            </div>
+          </div>
+          <div class="collapse" id="edit-ratings-form">
+            <hr class="border-secondary">
+            <form method="POST" action="{{ url_for('coteries.update_ratings', coterie_id=coterie.coterie_id) }}">
+              <div class="row g-2 mb-2">
+                <div class="col-4">
+                  <label class="form-label small fw-semibold">Chasse</label>
+                  <input type="number" name="chasse" id="inp-chasse" class="form-control form-control-sm"
+                         min="0" max="5" value="{{ coterie.chasse }}" required>
+                </div>
+                <div class="col-4">
+                  <label class="form-label small fw-semibold">Lien</label>
+                  <input type="number" name="lien" class="form-control form-control-sm"
+                         min="0" max="5" value="{{ coterie.lien }}" required>
+                </div>
+                <div class="col-4">
+                  <label class="form-label small fw-semibold">Portillon</label>
+                  <input type="number" name="portillon" id="inp-portillon" class="form-control form-control-sm"
+                         min="0" max="5" value="{{ coterie.portillon }}" required>
+                </div>
+              </div>
+              <div class="text-danger small mb-2 d-none" id="portillon-warning">
+                Portillon cannot exceed Chasse.
+              </div>
+              <button type="submit" class="btn btn-sm btn-danger" id="ratings-save">Save Ratings</button>
+            </form>
+            <script>
+            (function () {
+              var chasse = document.getElementById('inp-chasse');
+              var portillon = document.getElementById('inp-portillon');
+              var warning = document.getElementById('portillon-warning');
+              var btn = document.getElementById('ratings-save');
+              function check() {
+                var invalid = parseInt(portillon.value, 10) > parseInt(chasse.value, 10);
+                warning.classList.toggle('d-none', !invalid);
+                btn.disabled = invalid;
+              }
+              chasse.addEventListener('input', check);
+              portillon.addEventListener('input', check);
+            })();
+            </script>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Owned Sites card -->
+    <div class="col-md-6 mb-3">
+      <div class="card h-100">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0"><i class="bi bi-geo-alt"></i> Hunting Sites</h5>
+          <a href="{{ url_for('sites.list_sites') }}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-map"></i> All Sites
+          </a>
+        </div>
+        <div class="card-body">
+          <p class="small text-muted mb-2">
+            Entitled to <strong>{{ sites_entitled }}</strong> site{{ 's' if sites_entitled != 1 else '' }}
+            (Chasse {{ coterie.chasse }}).
+            Currently owns <strong>{{ sites | length }}</strong>.
+            {% if sites | length > sites_entitled %}
+            <span class="text-warning ms-1"><i class="bi bi-exclamation-triangle"></i> Over entitlement</span>
+            {% endif %}
+          </p>
+          {% if sites %}
+          <ul class="list-unstyled mb-0">
+            {% for s in sites %}
+            <li class="mb-2">
+              <i class="bi bi-pin-map text-danger me-1"></i>
+              <strong>{{ s.name }}</strong>
+              <span class="text-muted small">({{ s.borough }})</span>
+              <div class="ms-3 mt-1">
+                {% for pt in s.predator_types %}
+                <span class="badge {% if pt.dc == 2 %}bg-success{% elif pt.dc == 3 %}bg-secondary{% else %}bg-danger{% endif %} me-1">
+                  {{ pt.type }} DC {{ pt.dc }}
+                </span>
+                {% endfor %}
+              </div>
+            </li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <p class="text-muted small mb-0">
+            No sites assigned. Use the <a href="{{ url_for('sites.list_sites') }}">Sites page</a> to assign.
+          </p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Members + Submit Spend ═══ -->
+  <div class="row mb-4">
+
+    <!-- Members card -->
+    <div class="col-md-7 mb-3">
+      <div class="card h-100">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0"><i class="bi bi-people"></i> Members</h5>
+          {% if coterie.members | length < coterie_max %}
+          <button class="btn btn-sm btn-outline-secondary"
+                  data-bs-toggle="collapse" data-bs-target="#add-member-form">
+            <i class="bi bi-person-plus"></i> Add
+          </button>
+          {% else %}
+          <span class="text-muted small">Full ({{ coterie_max }}/{{ coterie_max }})</span>
+          {% endif %}
+        </div>
+
+        {% if coterie.members | length < coterie_max %}
+        <div class="collapse" id="add-member-form">
+          <div class="card-body border-bottom">
+            <form method="POST"
+                  action="{{ url_for('coteries.add_member', coterie_id=coterie.coterie_id) }}">
+              <label class="form-label small fw-semibold">Add character</label>
+              <div class="d-flex gap-2">
+                {% if available_chars %}
+                <select name="character_name" class="form-select form-select-sm" required>
+                  <option value="">— select character —</option>
+                  {% for char in available_chars | sort(attribute='character_name') %}
+                  <option value="{{ char.character_name }}">
+                    {{ char.character_name }}{% if char.clan %} ({{ char.clan }}){% endif %}
+                  </option>
+                  {% endfor %}
+                </select>
+                <button type="submit" class="btn btn-sm btn-danger text-nowrap">Add</button>
+                {% else %}
+                <span class="text-muted small">No eligible characters available.</span>
+                {% endif %}
+              </div>
+            </form>
+          </div>
+        </div>
+        {% endif %}
+
+        <div class="card-body p-0">
+          {% if coterie.members %}
+          <table class="table table-dark table-sm mb-0 align-middle">
+            <thead>
+              <tr>
+                <th class="ps-3">Character</th>
+                <th class="d-none d-sm-table-cell">Clan</th>
+                <th class="text-end">Available XP</th>
+                <th class="text-end pe-3"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for member in coterie.members | sort %}
+              <tr>
+                <td class="ps-3 fw-semibold">{{ member }}</td>
+                <td class="text-muted small d-none d-sm-table-cell">{{ member_clan.get(member, '—') }}</td>
+                <td class="text-end
+                  {% if member_xp.get(member, 0) > 0 %}text-success
+                  {% elif member_xp.get(member, 0) < 0 %}text-danger
+                  {% endif %}">
+                  {{ member_xp.get(member, 0) }}
+                </td>
+                <td class="text-end pe-3">
+                  <form method="POST"
+                        action="{{ url_for('coteries.remove_member', coterie_id=coterie.coterie_id) }}"
+                        onsubmit="return confirm('Remove {{ member }} from this coterie?');"
+                        class="d-inline">
+                    <input type="hidden" name="character_name" value="{{ member }}">
+                    <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-1" title="Remove">
+                      <i class="bi bi-person-dash"></i>
+                    </button>
+                  </form>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% else %}
+          <p class="text-muted p-3 mb-0 small">No members yet.</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Submit Spend card -->
+    <div class="col-md-5 mb-3">
+      <div class="card h-100">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0"><i class="bi bi-cart-plus"></i> New Spend</h5>
+        </div>
+        <div class="card-body">
+          {% if coterie.members | length == 0 %}
+          <p class="text-muted small mb-0">Add members before submitting a coterie spend.</p>
+          {% else %}
+          <form method="POST"
+                action="{{ url_for('coteries.submit_spend', coterie_id=coterie.coterie_id) }}">
+            <div class="mb-2">
+              <label class="form-label small fw-semibold">Initiated by <span class="text-danger">*</span></label>
+              <select name="initiated_by" class="form-select form-select-sm" required>
+                <option value="">— select member —</option>
+                {% for member in coterie.members | sort %}
+                <option value="{{ member }}">{{ member }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="mb-2">
+              <label class="form-label small fw-semibold">Category <span class="text-danger">*</span></label>
+              <input type="text" name="spend_category" class="form-control form-control-sm" required
+                     maxlength="100" placeholder="e.g., Coterie Advantage">
+            </div>
+            <div class="mb-2">
+              <label class="form-label small fw-semibold">Trait / Item <span class="text-danger">*</span></label>
+              <input type="text" name="trait_name" class="form-control form-control-sm" required
+                     maxlength="100" placeholder="e.g., Haven (Security 2)">
+            </div>
+            <div class="mb-2">
+              <label class="form-label small fw-semibold">XP per member <span class="text-danger">*</span></label>
+              <input type="number" name="xp_cost_per_member" class="form-control form-control-sm"
+                     required min="1" max="999" id="xp-per-member">
+              <div class="form-text" id="xp-total-display"></div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-semibold">Justification</label>
+              <textarea name="justification" class="form-control form-control-sm" rows="2"
+                        placeholder="Optional notes for staff"></textarea>
+            </div>
+            <button type="submit" class="btn btn-sm btn-danger w-100">
+              <i class="bi bi-send"></i> Submit Spend
+            </button>
+          </form>
+          <script>
+          (function () {
+            var input = document.getElementById('xp-per-member');
+            var display = document.getElementById('xp-total-display');
+            var memberCount = {{ coterie.members | length }};
+            input.addEventListener('input', function () {
+              var per = parseInt(input.value, 10);
+              if (!isNaN(per) && per > 0) {
+                display.textContent = per + ' XP × ' + memberCount + ' members = ' + (per * memberCount) + ' XP total';
+              } else {
+                display.textContent = '';
+              }
+            });
+          })();
+          </script>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Pending Spends ═══ -->
+  {% if pending_spends %}
+  <h5 class="mb-3">Pending Spends</h5>
+  {% for spend in pending_spends %}
+  <div class="card mb-3 {% if spend.status == 'Funded' %}border-success{% else %}border-warning{% endif %}">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div>
+        <span class="fw-semibold">{{ spend.spend_category }}</span>
+        <span class="text-muted mx-1">—</span>
+        <span>{{ spend.trait_name }}</span>
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <span class="text-muted small">{{ spend.xp_cost_per_member }} XP/member &middot; {{ spend.total_xp_cost }} XP total</span>
+        {% if spend.status == 'Funded' %}
+        <span class="badge bg-success">Funded</span>
+        {% else %}
+        <span class="badge bg-warning text-dark">Pending</span>
+        {% endif %}
+      </div>
+    </div>
+    <div class="card-body">
+      {% if spend.justification %}
+      <p class="text-muted small mb-3"><em>{{ spend.justification }}</em></p>
+      {% endif %}
+      <p class="small mb-2">
+        <span class="text-muted">Initiated by:</span>
+        <strong>{{ spend.initiated_by }}</strong>
+      </p>
+
+      <!-- Contributions table -->
+      <table class="table table-dark table-sm mb-3">
+        <thead>
+          <tr>
+            <th>Member</th>
+            <th class="text-center">Committed</th>
+            {% if spend.status == 'Pending' %}
+            <th class="text-end"></th>
+            {% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% set committed_lower = spend.contributions.keys() | map('lower') | list %}
+          {% for member in coterie.members | sort %}
+          {% set is_committed = member | lower in committed_lower %}
+          <tr>
+            <td>{{ member }}</td>
+            <td class="text-center">
+              {% if is_committed %}
+              <i class="bi bi-check-circle-fill text-success"></i>
+              {% else %}
+              <i class="bi bi-hourglass text-warning"></i>
+              {% endif %}
+            </td>
+            {% if spend.status == 'Pending' %}
+            <td class="text-end">
+              {% if not is_committed %}
+              <form method="POST"
+                    action="{{ url_for('coteries.commit_member', coterie_id=coterie.coterie_id, spend_id=spend.id) }}"
+                    class="d-inline">
+                <input type="hidden" name="character_name" value="{{ member }}">
+                <button type="submit" class="btn btn-sm btn-outline-success py-0 px-2">
+                  <i class="bi bi-check"></i> Commit
+                </button>
+              </form>
+              {% endif %}
+            </td>
+            {% endif %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <!-- Actions -->
+      {% if spend.status == 'Pending' %}
+      <form method="POST"
+            action="{{ url_for('coteries.commit_all', coterie_id=coterie.coterie_id, spend_id=spend.id) }}"
+            class="d-inline me-2">
+        <button type="submit" class="btn btn-sm btn-warning">
+          <i class="bi bi-check-all"></i> Commit All Remaining
+        </button>
+      </form>
+      {% endif %}
+
+      {% if spend.status == 'Funded' %}
+      <div class="row g-2 mt-1">
+        <div class="col-md-6">
+          <form method="POST"
+                action="{{ url_for('coteries.approve_spend', coterie_id=coterie.coterie_id, spend_id=spend.id) }}">
+            <textarea name="notes" class="form-control form-control-sm mb-2" rows="2"
+                      placeholder="Approval notes (optional)"></textarea>
+            <button type="submit" class="btn btn-sm btn-success w-100">
+              <i class="bi bi-check-circle"></i> Approve
+            </button>
+          </form>
+        </div>
+        <div class="col-md-6">
+          <form method="POST"
+                action="{{ url_for('coteries.deny_spend', coterie_id=coterie.coterie_id, spend_id=spend.id) }}">
+            <textarea name="notes" class="form-control form-control-sm mb-2" rows="2"
+                      placeholder="Denial reason (optional)"></textarea>
+            <button type="submit" class="btn btn-sm btn-danger w-100">
+              <i class="bi bi-x-circle"></i> Deny
+            </button>
+          </form>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+  {% endif %}
+
+  <!-- ═══ Discord Export ═══ -->
+  <div class="card mb-3 border-secondary">
+    <div class="card-header d-flex justify-content-between align-items-center"
+         style="cursor:pointer" data-bs-toggle="collapse" data-bs-target="#discord-export-panel">
+      <h5 class="mb-0"><i class="bi bi-discord"></i> Discord Export</h5>
+      <i class="bi bi-chevron-down"></i>
+    </div>
+    <div class="collapse" id="discord-export-panel">
+      <div class="card-body">
+        <p class="text-muted small mb-2">Ready to paste into your coterie channel.</p>
+        <textarea class="form-control form-control-sm font-monospace" rows="12"
+                  id="discord-export-text" readonly>{{ discord_export }}</textarea>
+        <button class="btn btn-sm btn-outline-secondary mt-2" id="copy-discord-btn">
+          <i class="bi bi-clipboard"></i> Copy
+        </button>
+        <script>
+        document.getElementById('copy-discord-btn').addEventListener('click', function () {
+          var t = document.getElementById('discord-export-text');
+          t.select();
+          document.execCommand('copy');
+          this.innerHTML = '<i class="bi bi-check"></i> Copied!';
+          var btn = this;
+          setTimeout(function () { btn.innerHTML = '<i class="bi bi-clipboard"></i> Copy'; }, 2000);
+        });
+        </script>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Coterie Rules Reference ═══ -->
+  <div class="card mb-4 border-secondary">
+    <div class="card-header d-flex justify-content-between align-items-center"
+         style="cursor:pointer" data-bs-toggle="collapse" data-bs-target="#coterie-rules-panel">
+      <h5 class="mb-0"><i class="bi bi-book"></i> Coterie Rules Reference</h5>
+      <i class="bi bi-chevron-down"></i>
+    </div>
+    <div class="collapse" id="coterie-rules-panel">
+      <div class="card-body">
+        <h6 class="text-danger">Formation</h6>
+        <ul class="small">
+          <li>Coteries may have up to <strong>{{ coterie_max }} members</strong> (including the founder).</li>
+          <li>Each member must be an active character not already in another coterie.</li>
+          <li>Starting dots: distribute <strong>5 dots</strong> across Chasse, Lien, and Portillon at creation.</li>
+          <li>Coteries formed after a timeskip receive starting dots assigned by staff.</li>
+        </ul>
+        <h6 class="text-danger mt-3">Ratings</h6>
+        <ul class="small">
+          <li><strong>Chasse</strong> — Hunting grounds. Sets site entitlement and modifies hunting DCs for coterie channel hunts.</li>
+          <li><strong>Lien</strong> — Social standing and boons owed to the coterie in the city.</li>
+          <li><strong>Portillon</strong> — Haven security. <em class="text-warning">Cannot exceed Chasse.</em></li>
+        </ul>
+        <h6 class="text-danger mt-3">Chasse &amp; Site Entitlement</h6>
+        <table class="table table-dark table-sm mb-3">
+          <thead><tr><th>Chasse</th><th>Sites Entitled</th><th>Hunting DC (coterie channel)</th></tr></thead>
+          <tbody>
+            <tr><td>0 – 1</td><td>0 sites</td><td>Chasse 1 → DC 5</td></tr>
+            <tr><td>2 – 3</td><td>1 site</td><td>Chasse 2 → DC 4 / Chasse 3 → DC 3</td></tr>
+            <tr><td>4</td><td>2 sites</td><td>Chasse 4 → DC 2</td></tr>
+            <tr><td>5</td><td>3 sites (full district alert if all sites in district)</td><td>Chasse 5 → DC 1</td></tr>
+          </tbody>
+        </table>
+        <h6 class="text-danger mt-3">Coterie Spends</h6>
+        <ul class="small">
+          <li>Cost is <strong>3 XP per dot</strong> per member for Chasse, Lien, and Portillon.</li>
+          <li>All members must commit their XP share before the spend can be approved.</li>
+          <li>Once all members commit the spend moves to <em>Funded</em> and awaits staff approval.</li>
+          <li>Staff approves or denies — approval deducts XP from all members simultaneously.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Spend History ═══ -->
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5 class="mb-0">Spend History</h5>
+    </div>
+    <div class="card-body p-0">
+      {% if spend_history %}
+      <div class="table-responsive">
+        <table class="table table-dark table-striped table-sm mb-0 align-middle">
+          <thead>
+            <tr>
+              <th class="ps-3">Trait</th>
+              <th class="d-none d-sm-table-cell">Category</th>
+              <th class="text-center">XP/member</th>
+              <th class="text-center">Total</th>
+              <th class="text-center">Status</th>
+              <th class="d-none d-md-table-cell">Reviewed</th>
+              <th class="d-none d-md-table-cell pe-3">Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for spend in spend_history %}
+            <tr>
+              <td class="ps-3 fw-semibold">{{ spend.trait_name }}</td>
+              <td class="d-none d-sm-table-cell text-muted small">{{ spend.spend_category }}</td>
+              <td class="text-center">{{ spend.xp_cost_per_member }}</td>
+              <td class="text-center">
+                <span class="text-danger fw-semibold">{{ spend.total_xp_cost }}</span>
+              </td>
+              <td class="text-center">
+                {% if spend.status | lower == 'approved' %}
+                <span class="badge bg-success">Approved</span>
+                {% elif spend.status | lower == 'denied' %}
+                <span class="badge bg-danger">Denied</span>
+                {% else %}
+                <span class="badge bg-secondary">{{ spend.status }}</span>
+                {% endif %}
+              </td>
+              <td class="d-none d-md-table-cell">
+                <small class="text-muted">
+                  {{ spend.reviewed_by or '—' }}
+                  {% if spend.review_date %}<br>{{ spend.review_date }}{% endif %}
+                </small>
+              </td>
+              <td class="d-none d-md-table-cell pe-3">
+                <small class="text-muted">{{ spend.st_notes or '—' }}</small>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="text-muted p-3 mb-0 small">No completed spends yet.</p>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}

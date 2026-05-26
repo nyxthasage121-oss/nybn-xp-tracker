@@ -1,4 +1,4 @@
-/* MCbN XP Tracker — Client-side interactivity */
+/* NYbN XP Tracker — Client-side interactivity */
 
 document.addEventListener('DOMContentLoaded', function () {
 

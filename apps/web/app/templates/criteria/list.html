@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block title %}Criteria — NYbN XP Tracker{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <h1 class="mb-0">XP Earn Criteria</h1>
+    <button class="btn btn-danger" data-bs-toggle="collapse" data-bs-target="#add-criterion-form">
+      <i class="bi bi-plus-lg"></i> Add Criterion
+    </button>
+  </div>
+
+  <!-- Add Criterion Form -->
+  <div class="collapse mb-4" id="add-criterion-form">
+    <div class="card border-secondary">
+      <div class="card-header fw-semibold">New Criterion</div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('criteria.add_criterion') }}">
+          {% include 'criteria/_form_fields.html' %}
+          <div class="mt-3">
+            <button type="submit" class="btn btn-danger">Add</button>
+            <button type="button" class="btn btn-outline-secondary ms-2"
+                    data-bs-toggle="collapse" data-bs-target="#add-criterion-form">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Criteria Table -->
+  <div class="card">
+    <div class="card-body p-0">
+      {% if criteria %}
+      <div class="table-responsive">
+        <table class="table table-dark table-striped table-hover mb-0 align-middle">
+          <thead>
+            <tr>
+              <th style="width:3rem">#</th>
+              <th>Label</th>
+              <th class="d-none d-sm-table-cell">Description</th>
+              <th class="text-center">XP</th>
+              <th class="text-center">Category</th>
+              <th class="text-center d-none d-md-table-cell">RP Links</th>
+              <th class="text-center d-none d-md-table-cell">Note</th>
+              <th class="text-center">Status</th>
+              <th class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for crit in criteria %}
+            <tr class="{% if not crit.active %}opacity-50{% endif %}">
+              <td class="text-muted small">{{ crit.sort_order }}</td>
+              <td class="fw-semibold">{{ crit.label }}</td>
+              <td class="text-muted small d-none d-sm-table-cell">{{ crit.description or '—' }}</td>
+              <td class="text-center">
+                <span class="badge bg-secondary">+{{ crit.xp_value }}</span>
+              </td>
+              <td class="text-center">
+                {% if crit.category == 'base' %}
+                  <span class="badge bg-primary">base</span>
+                {% elif crit.category == 'player' %}
+                  <span class="badge bg-info text-dark">player</span>
+                {% elif crit.category == 'staff' %}
+                  <span class="badge bg-warning text-dark">staff</span>
+                {% elif crit.category == 'helper' %}
+                  <span class="badge bg-success">helper</span>
+                {% else %}
+                  <span class="badge bg-secondary">{{ crit.category }}</span>
+                {% endif %}
+              </td>
+              <td class="text-center d-none d-md-table-cell">
+                {% if crit.requires_rp_links %}
+                  <i class="bi bi-check-circle-fill text-success"></i>
+                {% else %}
+                  <i class="bi bi-dash text-muted"></i>
+                {% endif %}
+              </td>
+              <td class="text-center d-none d-md-table-cell">
+                {% if crit.requires_text_note %}
+                  <i class="bi bi-check-circle-fill text-success"></i>
+                {% else %}
+                  <i class="bi bi-dash text-muted"></i>
+                {% endif %}
+              </td>
+              <td class="text-center">
+                {% if crit.active %}
+                  <span class="badge bg-success">Active</span>
+                {% else %}
+                  <span class="badge bg-secondary">Inactive</span>
+                {% endif %}
+              </td>
+              <td class="text-end">
+                <div class="d-flex justify-content-end gap-1">
+                  <!-- Edit -->
+                  <button class="btn btn-sm btn-outline-primary"
+                          data-bs-toggle="collapse"
+                          data-bs-target="#edit-crit-{{ crit.criteria_id }}"
+                          title="Edit">
+                    <i class="bi bi-pencil"></i>
+                  </button>
+                  <!-- Toggle active/inactive -->
+                  <form method="POST"
+                        action="{{ url_for('criteria.toggle_criterion', criterion_id=crit.criteria_id) }}"
+                        class="d-inline">
+                    <button type="submit" class="btn btn-sm btn-outline-warning"
+                            title="{{ 'Deactivate' if crit.active else 'Activate' }}">
+                      <i class="bi bi-{{ 'pause-circle' if crit.active else 'play-circle' }}"></i>
+                    </button>
+                  </form>
+                  <!-- Delete -->
+                  <form method="POST"
+                        action="{{ url_for('criteria.delete_criterion', criterion_id=crit.criteria_id) }}"
+                        class="d-inline"
+                        onsubmit="return confirm('Delete criterion &quot;{{ crit.label }}&quot;? This cannot be undone.');">
+                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+                      <i class="bi bi-trash3"></i>
+                    </button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+            <!-- Inline edit row (collapsed) -->
+            <tr class="collapse" id="edit-crit-{{ crit.criteria_id }}">
+              <td colspan="9" class="bg-dark p-3">
+                <form method="POST"
+                      action="{{ url_for('criteria.edit_criterion', criterion_id=crit.criteria_id) }}">
+                  {% include 'criteria/_form_fields.html' with context %}
+                  {# Pre-fill fields via JS below #}
+                  <script>
+                  (function() {
+                    var row = document.getElementById('edit-crit-{{ crit.criteria_id }}');
+                    var form = row.querySelector('form');
+                    form.querySelector('[name="label"]').value = {{ crit.label | tojson }};
+                    form.querySelector('[name="description"]').value = {{ (crit.description or '') | tojson }};
+                    form.querySelector('[name="xp_value"]').value = {{ crit.xp_value }};
+                    form.querySelector('[name="sort_order"]').value = {{ crit.sort_order }};
+                    form.querySelector('[name="category"]').value = {{ crit.category | tojson }};
+                    form.querySelector('[name="requires_rp_links"]').checked = {{ 'true' if crit.requires_rp_links else 'false' }};
+                    form.querySelector('[name="requires_text_note"]').checked = {{ 'true' if crit.requires_text_note else 'false' }};
+                  })();
+                  </script>
+                  <div class="mt-3 d-flex gap-2">
+                    <button type="submit" class="btn btn-sm btn-primary">Save</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#edit-crit-{{ crit.criteria_id }}">Cancel</button>
+                  </div>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="text-muted p-4 mb-0">No criteria defined yet. Click "Add Criterion" to create the first one.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <p class="text-muted small mt-3">
+    <i class="bi bi-info-circle"></i>
+    Inactive criteria are hidden from players but preserved in historical claims.
+    Sort order controls display order on the claim form (lower = first).
+  </p>
+</div>
+{% endblock %}

@@ -127,67 +127,59 @@
                             </select>
                         </div>
 
-                        <!-- XP Categories -->
+                        <!-- XP Categories (database-driven) -->
                         <div class="mb-3">
-                            <label class="form-label fw-bold">XP Categories <small class="text-muted">(1 XP each, 7 max)</small></label>
-
-                            {% set cats = [
-                                ('posted_once', 'Posted at least once during this play period'),
-                                ('hunting_awakening', 'Posted a Hunting and/or Awakening scene'),
-                                ('scene_with_another', 'Participated in a scene with another character'),
-                                ('conflict', 'Engaged in conflict with another character'),
-                                ('combat', 'Engaged in combat with another character'),
-                                ('unmitigated_stain', 'Took an unmitigated Stain'),
-                            ] %}
-
-                            {% for key, label in cats %}
-                            <div class="card bg-dark mb-2">
+                            <label class="form-label fw-bold">XP Categories</label>
+                            {% if criteria %}
+                            {% for crit in criteria %}
+                            <div class="card bg-dark mb-2 criteria-card"
+                                 data-crit-id="{{ crit.criteria_id }}"
+                                 data-crit-xp="{{ crit.xp_value }}"
+                                 data-requires-links="{{ 'true' if crit.requires_rp_links else 'false' }}"
+                                 data-requires-note="{{ 'true' if crit.requires_text_note else 'false' }}"
+                                 data-category="{{ crit.category }}">
                                 <div class="card-body py-2 px-3">
                                     <div class="form-check">
-                                        <input class="form-check-input claim-cat-check" type="checkbox"
-                                               name="{{ key }}" id="{{ key }}" value="1"
-                                               data-link-target="{{ key }}_link_group">
-                                        <label class="form-check-label" for="{{ key }}">{{ label }}</label>
-                                    </div>
-                                    <div class="mt-2 d-none" id="{{ key }}_link_group">
-                                        <input type="url" class="form-control form-control-sm claim-link-input"
-                                               name="{{ key }}_link" placeholder="Discord post link (required)"
-                                               pattern="https?://.*">
+                                        <input class="form-check-input claim-crit-check" type="checkbox"
+                                               name="criteria_ids" value="{{ crit.criteria_id }}"
+                                               id="crit_{{ crit.criteria_id }}">
+                                        <label class="form-check-label" for="crit_{{ crit.criteria_id }}">
+                                            <span class="fw-semibold">{{ crit.label }}</span>
+                                            <span class="badge bg-secondary ms-1">+{{ crit.xp_value }} XP</span>
+                                            {% if crit.description %}
+                                            <div class="text-muted small">{{ crit.description }}</div>
+                                            {% endif %}
+                                        </label>
                                     </div>
                                 </div>
                             </div>
                             {% endfor %}
-
-                            <!-- Wildcard / Bonus XP -->
-                            <div class="card bg-dark mb-2 border-warning border-opacity-50">
-                                <div class="card-body py-2 px-3">
-                                    <div class="form-check">
-                                        <input class="form-check-input claim-cat-check" type="checkbox"
-                                               name="wildcard" id="wildcard" value="1"
-                                               data-link-target="wildcard_link_group">
-                                        <label class="form-check-label text-warning" for="wildcard">
-                                            <i class="bi bi-star-fill"></i> Wildcard / Bonus XP
-                                        </label>
-                                    </div>
-                                    <div class="mt-2 d-none" id="wildcard_link_group">
-                                        <div class="row g-2 mb-2">
-                                          <div class="col">
-                                            <input type="text" class="form-control form-control-sm wildcard-reason-input"
-                                                   name="wildcard_reason" placeholder="Reason for bonus XP (required)">
-                                          </div>
-                                          <div class="col-auto" style="width: 90px;">
-                                            <input type="number" class="form-control form-control-sm wildcard-amount-input"
-                                                   name="wildcard_amount" min="1" max="20" value="1"
-                                                   placeholder="XP" title="Number of XP">
-                                          </div>
-                                        </div>
-                                        <input type="url" class="form-control form-control-sm claim-link-input"
-                                               name="wildcard_link" placeholder="Discord post link (required)"
-                                               pattern="https?://.*">
-                                    </div>
-                                </div>
-                            </div>
+                            {% else %}
+                            <p class="text-muted small">No active criteria found. Contact staff.</p>
+                            {% endif %}
                         </div>
+
+                        <!-- RP Links (shown when any criterion requires them) -->
+                        <div class="mb-3 d-none" id="rp-links-section">
+                            <label class="form-label fw-bold">RP Links <span class="text-danger">*</span></label>
+                            <div id="rp-links-container">
+                                <input type="url" class="form-control form-control-sm mb-1" name="rp_links"
+                                       placeholder="Discord post link (https://discord.com/...)" pattern="https?://.*">
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-secondary mt-1" id="add-rp-link">
+                                <i class="bi bi-plus"></i> Add another link
+                            </button>
+                        </div>
+
+                        <!-- Helper Note (shown when helper criterion is checked) -->
+                        <div class="mb-3 d-none" id="helper-note-section">
+                            <label for="helper_note" class="form-label fw-bold">Helper Note <span class="text-danger">*</span></label>
+                            <textarea class="form-control form-control-sm" name="helper_note" id="helper_note" rows="2"
+                                      placeholder="Describe what you did to help (tickets, scenes, NPCs)..."></textarea>
+                        </div>
+
+                        <!-- Hidden path field set by JS based on which criteria are checked -->
+                        <input type="hidden" name="path" id="claim-path" value="none">
 
                         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
                             <span class="text-muted" id="claim-xp-count">0 XP selected</span>
@@ -249,11 +241,21 @@
                             </div>
                         </div>
 
-                        <!-- In-Clan checkbox (hidden unless Discipline) -->
-                        <div class="mb-3 d-none" id="in-clan-group">
+                        <!-- Humanity conditions (shown when Humanity category is selected) -->
+                        <div class="mb-3 d-none" id="humanity-conditions-group">
+                            <label class="form-label fw-bold text-warning"><i class="bi bi-heart-pulse"></i> Humanity Conditions</label>
+                            <div class="small text-muted mb-2">All three conditions must be met and you may only buy 1 Humanity at a time.</div>
                             <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="is_in_clan" id="is_in_clan" value="1">
-                                <label class="form-check-label" for="is_in_clan">This is an In-Clan Discipline</label>
+                                <input class="form-check-input" type="checkbox" name="humanity_no_frenzy" id="humanity_no_frenzy" value="1">
+                                <label class="form-check-label small" for="humanity_no_frenzy">No frenzy in the past 2 weeks (IRL)</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="humanity_no_stains" id="humanity_no_stains" value="1">
+                                <label class="form-check-label small" for="humanity_no_stains">No unmitigated Stains in the past 2 weeks</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="humanity_humane_act" id="humanity_humane_act" value="1">
+                                <label class="form-check-label small" for="humanity_humane_act">Performed a humane act or played your path accordingly</label>
                             </div>
                         </div>
 
@@ -508,16 +510,18 @@
                         <tr><td>Attribute</td><td>New rating × 5</td><td>2→3 = 15 XP</td></tr>
                         <tr><td>Skill</td><td>New rating × 3</td><td>1→2 = 6 XP</td></tr>
                         <tr><td>New Skill (0→1)</td><td>3 XP flat</td><td>0→1 = 3 XP</td></tr>
-                        <tr><td>Discipline (In-Clan)</td><td>New rating × 5</td><td>0→2 = 15 XP</td></tr>
-                        <tr><td>Discipline (Out-of-Clan)</td><td>New rating × 7</td><td>0→1 = 7 XP</td></tr>
+                        <tr><td>Clan Discipline</td><td>New rating × 5</td><td>0→2 = 15 XP</td></tr>
+                        <tr><td>Other Discipline</td><td>New rating × 7</td><td>0→1 = 7 XP</td></tr>
                         <tr><td>Caitiff Discipline</td><td>New rating × 6</td><td>1→2 = 12 XP</td></tr>
+                        <tr><td>Ingrained Discipline</td><td>Clan rate (max 15 XP total)</td><td>see flaw</td></tr>
                         <tr><td>Blood Sorcery Ritual</td><td>Level × 3</td><td>Level 3 = 9 XP</td></tr>
-                        <tr><td>Thin-Blood Alchemy</td><td>Level × 3</td><td>Level 2 = 6 XP</td></tr>
-                        <tr><td>Advantage</td><td>3 XP per dot purchased</td><td>0→2 = 6 XP</td></tr>
-                        <tr><td>Loresheet</td><td>Purchased dot × 3</td><td>Buy dot 3 = 9 XP</td></tr>
+                        <tr><td>Thin-Blood Alchemy Formula</td><td>Level × 3</td><td>Level 2 = 6 XP</td></tr>
+                        <tr><td>Advantage</td><td>3 XP per dot</td><td>0→2 = 6 XP</td></tr>
+                        <tr><td>Blood Potency</td><td>New rating × 10</td><td>2→3 = 30 XP</td></tr>
+                        <tr><td>Humanity</td><td>New rating × 2 (conditional)</td><td>Buy Humanity 6 = 12 XP</td></tr>
                     </tbody>
                 </table>
-                <small class="text-muted mt-2 d-block">For multi-dot purchases, add each step. Example: In-Clan Discipline 1→3 = (2×5) + (3×5) = 25 XP.</small>
+                <small class="text-muted mt-2 d-block">Multi-dot purchases are summed per step. Example: Clan Discipline 1→3 = (2×5) + (3×5) = 25 XP. Humanity requires all conditions met, 1 dot at a time.</small>
             </div>
         </div>
     </div>
@@ -579,72 +583,65 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // ═══ XP Claim Form Logic ═══
 
-    const claimChecks = document.querySelectorAll('.claim-cat-check');
+    const critChecks = document.querySelectorAll('.claim-crit-check');
     const claimCount = document.getElementById('claim-xp-count');
     const claimBtn = document.getElementById('claim-submit-btn');
+    const rpLinksSection = document.getElementById('rp-links-section');
+    const helperNoteSection = document.getElementById('helper-note-section');
+    const helperNoteInput = document.getElementById('helper_note');
+    const claimPath = document.getElementById('claim-path');
 
-    function updateXPCount() {
-        let total = 0;
-        claimChecks.forEach(function(cb) {
-            if (cb.checked) {
-                if (cb.name === 'wildcard') {
-                    const amtInput = document.querySelector('.wildcard-amount-input');
-                    total += amtInput ? Math.max(1, parseInt(amtInput.value) || 1) : 1;
-                } else {
-                    total += 1;
-                }
-            }
-        });
-        claimCount.textContent = total + ' XP selected';
-        claimBtn.disabled = total === 0;
-    }
+    function updateClaimForm() {
+        let totalXp = 0;
+        let needsLinks = false;
+        let needsNote = false;
+        let path = 'none';
 
-    if (claimChecks.length) {
-        claimChecks.forEach(function(cb) {
-            cb.addEventListener('change', function() {
-                // Toggle link input visibility and required state
-                const target = document.getElementById(this.dataset.linkTarget);
-                if (target) {
-                    const linkInput = target.querySelector('.claim-link-input');
-                    const reasonInput = target.querySelector('.wildcard-reason-input');
-                    const amountInput = target.querySelector('.wildcard-amount-input');
-                    if (this.checked) {
-                        target.classList.remove('d-none');
-                        if (linkInput) linkInput.required = true;
-                        if (reasonInput) reasonInput.required = true;
-                        if (amountInput) amountInput.required = true;
-                    } else {
-                        target.classList.add('d-none');
-                        if (linkInput) {
-                            linkInput.required = false;
-                            linkInput.value = '';
-                        }
-                        if (reasonInput) {
-                            reasonInput.required = false;
-                            reasonInput.value = '';
-                        }
-                        if (amountInput) {
-                            amountInput.required = false;
-                            amountInput.value = '1';
-                        }
-                    }
-                }
-                updateXPCount();
-            });
+        critChecks.forEach(function(cb) {
+            if (!cb.checked) return;
+            const card = cb.closest('.criteria-card');
+            if (!card) return;
+            totalXp += parseInt(card.dataset.critXp) || 0;
+            if (card.dataset.requiresLinks === 'true') needsLinks = true;
+            if (card.dataset.requiresNote === 'true') needsNote = true;
+            const cat = card.dataset.category;
+            if (cat === 'staff') path = 'staff';
+            if (cat === 'helper') path = 'helper';
         });
-        // Also update count when wildcard amount changes
-        const wcAmount = document.querySelector('.wildcard-amount-input');
-        if (wcAmount) {
-            wcAmount.addEventListener('input', updateXPCount);
+
+        claimCount.textContent = totalXp + ' XP selected';
+        claimBtn.disabled = totalXp === 0;
+        if (claimPath) claimPath.value = path;
+        if (rpLinksSection) rpLinksSection.classList.toggle('d-none', !needsLinks);
+        if (helperNoteSection) {
+            helperNoteSection.classList.toggle('d-none', !needsNote);
+            if (helperNoteInput) helperNoteInput.required = needsNote;
         }
     }
+
+    critChecks.forEach(function(cb) {
+        cb.addEventListener('change', updateClaimForm);
+    });
+
+    document.getElementById('add-rp-link')?.addEventListener('click', function() {
+        const container = document.getElementById('rp-links-container');
+        if (!container) return;
+        const input = document.createElement('input');
+        input.type = 'url';
+        input.className = 'form-control form-control-sm mb-1';
+        input.name = 'rp_links';
+        input.placeholder = 'Discord post link (https://discord.com/...)';
+        input.pattern = 'https?://.*';
+        container.appendChild(input);
+        input.focus();
+    });
 
     // ═══ Spend Request Form Logic ═══
 
     const spendCategory = document.getElementById('spend_category');
     const currentDots = document.getElementById('current_dots');
     const newDots = document.getElementById('new_dots');
-    const inClanGroup = document.getElementById('in-clan-group');
+    const humanityGroup = document.getElementById('humanity-conditions-group');
     const costValue = document.getElementById('spend-cost-value');
     const costFormula = document.getElementById('spend-cost-formula');
     const xpWarning = document.getElementById('spend-xp-warning');
@@ -653,18 +650,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (!spendCategory) return;
 
-    // V5 XP cost rules (mirrors xp_rules.py)
+    // NYbN XP cost rules (mirrors xp_rules.py / xp_costs.json)
     const XP_RULES = {
-        'Attribute':                   { multiplier: 5, min: 1, max: 5 },
-        'Skill':                       { multiplier: 3, min: 1, max: 5 },
-        'New Skill':                   { flat: 3, min: 0, max: 1 },
-        'Discipline (In-Clan)':        { multiplier: 5, min: 0, max: 5 },
-        'Discipline (Out-of-Clan)':    { multiplier: 7, min: 0, max: 5 },
-        'Caitiff Discipline':          { multiplier: 6, min: 0, max: 5 },
-        'Blood Sorcery Ritual':        { level_mult: 3, min: 0, max: 5 },
-        'Thin-Blood Alchemy Formula':  { level_mult: 3, min: 0, max: 5 },
-        'Advantage (Merit/Background)':{ per_dot: 3, min: 0, max: 5 },
-        'Loresheet':                   { level_mult: 3, min: 0, max: 5 },
+        'Attribute':                  { multiplier: 5,  min: 1, max: 5  },
+        'Skill':                      { multiplier: 3,  min: 1, max: 5  },
+        'New Skill':                  { flat: 3,        min: 0, max: 1  },
+        'Specialty':                  { flat: 3,        min: 0, max: 1  },
+        'Clan Discipline':            { multiplier: 5,  min: 0, max: 5  },
+        'Other Discipline':           { multiplier: 7,  min: 0, max: 5  },
+        'Caitiff Discipline':         { multiplier: 6,  min: 0, max: 5  },
+        'Ingrained Discipline':       { multiplier: 5,  min: 0, max: 5  },
+        'Blood Sorcery Ritual':       { level_mult: 3,  min: 1, max: 5  },
+        'Thin-Blood Alchemy Formula': { level_mult: 3,  min: 1, max: 5  },
+        'Advantage':                  { per_dot: 3,     min: 0, max: 5  },
+        'Blood Potency':              { multiplier: 10, min: 1, max: 10 },
+        'Humanity':                   { multiplier: 2,  min: 1, max: 10, humanity: true },
     };
 
     function calcCost() {
@@ -733,14 +733,14 @@ document.addEventListener('DOMContentLoaded', function() {
         newDots.min = rules.min + 1;
         newDots.max = rules.max;
 
-        // For "New Skill", force 0→1
+        // For "New Skill" / "Specialty", force 0→1
         if (rules.flat !== undefined) {
             currentDots.value = 0;
             currentDots.disabled = true;
             newDots.value = 1;
             newDots.disabled = true;
         } else if (rules.level_mult !== undefined) {
-            // Ritual/Formula/Loresheet purchases are priced by chosen dot only.
+            // Ritual/Formula: priced by chosen level only; current always 0
             currentDots.value = 0;
             currentDots.disabled = true;
             newDots.disabled = false;
@@ -749,14 +749,14 @@ document.addEventListener('DOMContentLoaded', function() {
             newDots.disabled = false;
         }
 
-        // Show/hide In-Clan checkbox
-        const isDiscipline = cat.toLowerCase().includes('discipline');
-        if (inClanGroup) {
-            if (isDiscipline) {
-                inClanGroup.classList.remove('d-none');
-            } else {
-                inClanGroup.classList.add('d-none');
-            }
+        // Show/hide Humanity conditions
+        if (humanityGroup) {
+            humanityGroup.classList.toggle('d-none', !rules.humanity);
+        }
+
+        // For Humanity: keep newDots synced to currentDots + 1
+        if (rules.humanity) {
+            newDots.value = (parseInt(currentDots.value) || 0) + 1;
         }
     }
 
@@ -764,7 +764,14 @@ document.addEventListener('DOMContentLoaded', function() {
         updateDotConstraints();
         calcCost();
     });
-    currentDots.addEventListener('input', calcCost);
+    currentDots.addEventListener('input', function() {
+        const cat = spendCategory.value;
+        const rules = XP_RULES[cat];
+        if (rules && rules.humanity) {
+            newDots.value = (parseInt(currentDots.value) || 0) + 1;
+        }
+        calcCost();
+    });
     newDots.addEventListener('input', calcCost);
 
 });
@@ -774,18 +781,21 @@ document.addEventListener('DOMContentLoaded', function() {
     const STORAGE_KEY = 'wl_' + {{ char.character_name | tojson }};
     const AVAILABLE_XP = {{ available_xp | int }};
 
-    // Mirror of the server-side cost rules (same as XP_RULES above)
+    // Mirror of the server-side cost rules (same as XP_RULES / xp_costs.json)
     const WL_RULES = {
-        'Attribute':                   { multiplier: 5 },
-        'Skill':                       { multiplier: 3 },
-        'New Skill':                   { flat: 3 },
-        'Discipline (In-Clan)':        { multiplier: 5 },
-        'Discipline (Out-of-Clan)':    { multiplier: 7 },
-        'Caitiff Discipline':          { multiplier: 6 },
-        'Blood Sorcery Ritual':        { level_mult: 3 },
-        'Thin-Blood Alchemy Formula':  { level_mult: 3 },
-        'Advantage (Merit/Background)':{ per_dot: 3 },
-        'Loresheet':                   { level_mult: 3 },
+        'Attribute':                  { multiplier: 5  },
+        'Skill':                      { multiplier: 3  },
+        'New Skill':                  { flat: 3        },
+        'Specialty':                  { flat: 3        },
+        'Clan Discipline':            { multiplier: 5  },
+        'Other Discipline':           { multiplier: 7  },
+        'Caitiff Discipline':         { multiplier: 6  },
+        'Ingrained Discipline':       { multiplier: 5  },
+        'Blood Sorcery Ritual':       { level_mult: 3  },
+        'Thin-Blood Alchemy Formula': { level_mult: 3  },
+        'Advantage':                  { per_dot: 3     },
+        'Blood Potency':              { multiplier: 10 },
+        'Humanity':                   { multiplier: 2  },
     };
 
     function wlCost(cat, from, to) {

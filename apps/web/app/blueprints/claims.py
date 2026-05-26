@@ -52,7 +52,7 @@ def approve(row_id):
     notes = request.form.get('notes', '')
     staff = get_staff_user()
 
-    db_service.approve_claim(row_id, approved_xp, staff, notes)
+    result = db_service.approve_claim(row_id, approved_xp, staff, notes)
     if sheets_sync:
         sheets_sync.sync_approve_claim(
             character_name=claim.character_name,
@@ -68,28 +68,6 @@ def approve(row_id):
             details=f'Approved {approved_xp} XP for {claim.play_period}. {notes}'.strip(),
         )
 
-    # Write approved XP to the ledger so it's permanently recorded
-    if approved_xp > 0:
-        from datetime import date as _date
-        ledger_date = _date.today().strftime('%Y%m%d')
-        db_service.add_ledger_entry(
-            character_name=claim.character_name,
-            date=ledger_date,
-            awarded=approved_xp,
-            spent=0,
-            reason=f'{claim.play_period} (claim approved)',
-            staff_user=staff,
-        )
-        if sheets_sync:
-            sheets_sync.sync_add_ledger_entry(
-                character_name=claim.character_name,
-                date=ledger_date,
-                awarded=approved_xp,
-                spent=0,
-                reason=f'{claim.play_period} (claim approved)',
-                staff_user=staff,
-            )
-
     db_service.log_action(
         staff_user=staff,
         action_type='approve_claim',
@@ -98,6 +76,8 @@ def approve(row_id):
     )
 
     flash(f'Approved {approved_xp} XP for {claim.character_name}.', 'success')
+    if result.get('cap_reached'):
+        flash(result.get('cap_message', f'{claim.character_name} has reached the 350 XP cap.'), 'warning')
     return redirect(url_for('claims.pending'))
 
 

@@ -41,3 +41,9 @@ google-cloud-cli-*.tar.gz
 
 # Local unrelated sandbox repo
 /tg-local/
+
+# SQLite dev database
+apps/web/data/
+
+# Claude Code local tooling (machine-specific paths)
+.claude/launch.json

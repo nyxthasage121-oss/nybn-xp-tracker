@@ -14,46 +14,90 @@
             {% else %}bg-danger{% endif %}">
             {{ claim.status | capitalize }}
         </span>
+        {% if claim.path != 'none' %}
+        <span class="badge bg-info ms-1">{{ claim.path | capitalize }} path</span>
+        {% endif %}
+        {% if claim.staff_claim_conflict %}
+        <span class="badge bg-warning text-dark ms-1"><i class="bi bi-exclamation-triangle"></i> Staff/Helper Conflict</span>
+        {% endif %}
     </div>
     <div class="ms-auto text-muted small">
-        Submitted {{ claim.timestamp }} &middot; {{ claim.xp_claimed }} XP claimed
+        Submitted {{ claim.timestamp }} &middot; {{ claim.computed_xp }} XP claimed
     </div>
 </div>
+
+{% if claim.staff_claim_conflict %}
+<div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle-fill"></i>
+    <strong>Staff/Helper Conflict:</strong> This player filed a staff or helper claim on another character during the same period. Review both before approving.
+</div>
+{% endif %}
 
 <div class="row g-4">
 
     <!-- Left: evidence cards -->
     <div class="col-lg-7">
         <h6 class="text-muted mb-3" style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.1em;">
-            Evidence Review
+            Claimed Criteria
         </h6>
-        {% for category in claim.categories %}
-        <div class="evidence-card {% if category.claimed %}claimed{% else %}not-claimed{% endif %}">
+
+        {% if claim.claimed_criteria %}
+        {% for crit in claim.claimed_criteria %}
+        <div class="evidence-card claimed">
             <div class="d-flex align-items-start gap-2">
                 <span class="mt-1">
-                    {% if category.claimed %}
                     <i class="bi bi-check-circle-fill text-success"></i>
-                    {% else %}
-                    <i class="bi bi-x-circle text-secondary"></i>
-                    {% endif %}
                 </span>
                 <div class="flex-grow-1">
-                    <div class="evidence-label">{{ category.name }}</div>
-                    {% if category.link %}
-                    <a href="{{ category.link }}" target="_blank" rel="noopener" class="evidence-link">
-                        <i class="bi bi-box-arrow-up-right me-1" style="font-size:0.7rem;"></i>{{ category.link }}
-                    </a>
-                    {% endif %}
-                    {% if category.reason %}
-                    <div class="text-muted small mt-1">{{ category.reason }}</div>
-                    {% endif %}
-                    {% if category.amount and category.amount != '1' %}
-                    <span class="badge bg-secondary ms-1">{{ category.amount }} XP</span>
-                    {% endif %}
+                    <div class="evidence-label">
+                        {{ crit.label }}
+                        <span class="badge bg-secondary ms-1">+{{ crit.xp_value_at_submission }} XP</span>
+                    </div>
                 </div>
             </div>
         </div>
         {% endfor %}
+        {% else %}
+        <p class="text-muted small">No criteria recorded.</p>
+        {% endif %}
+
+        <!-- RP Links -->
+        {% if claim.rp_links %}
+        <h6 class="text-muted mt-4 mb-2" style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.1em;">
+            RP Links
+        </h6>
+        {% for link in claim.rp_links %}
+        <div class="mb-1">
+            <a href="{{ link }}" target="_blank" rel="noopener" class="evidence-link">
+                <i class="bi bi-box-arrow-up-right me-1" style="font-size:0.7rem;"></i>{{ link }}
+            </a>
+        </div>
+        {% endfor %}
+        {% endif %}
+
+        <!-- Helper Note -->
+        {% if claim.path == 'helper' and claim.helper_note %}
+        <h6 class="text-muted mt-4 mb-2" style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.1em;">
+            Helper Note
+        </h6>
+        <div class="card mb-3" style="background:#1a1a2e;">
+            <div class="card-body py-2 px-3">
+                <p class="mb-0 small" style="font-style:italic;color:#ccc;">{{ claim.helper_note }}</p>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- ST Review Notes (if already reviewed) -->
+        {% if claim.st_notes and claim.status|trim|lower != 'pending' %}
+        <h6 class="text-muted mt-4 mb-2" style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.1em;">
+            ST Notes
+        </h6>
+        <div class="card border-secondary">
+            <div class="card-body py-2 px-3">
+                <p class="mb-0 small text-muted">{{ claim.st_notes }}</p>
+            </div>
+        </div>
+        {% endif %}
     </div>
 
     <!-- Right: sticky approve/deny panel -->
@@ -82,7 +126,8 @@
                         <div class="mb-3">
                             <label for="approved-xp-input" class="form-label small">Approved XP</label>
                             <input type="number" class="form-control" id="approved-xp-input"
-                                   name="approved_xp" value="{{ claim.xp_claimed }}" min="0" required>
+                                   name="approved_xp" value="{{ claim.computed_xp }}" min="0" required>
+                            <div class="form-text">Player claimed {{ claim.computed_xp }} XP. Adjust if needed.</div>
                         </div>
                         <div class="mb-3">
                             <label for="approve-notes" class="form-label small">Notes <span class="text-muted">(optional)</span></label>
@@ -120,6 +165,9 @@
                 <div class="card-body text-center text-muted py-4">
                     <i class="bi bi-lock" style="font-size:1.5rem;opacity:0.4;"></i>
                     <p class="mb-0 mt-2 small">This claim has already been {{ claim.status }}.</p>
+                    {% if claim.reviewed_by %}
+                    <p class="mb-0 mt-1 small">Reviewed by {{ claim.reviewed_by }} on {{ claim.review_date }}.</p>
+                    {% endif %}
                 </div>
             </div>
             {% endif %}

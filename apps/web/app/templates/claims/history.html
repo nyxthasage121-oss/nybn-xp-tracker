@@ -26,7 +26,7 @@
                 <tr>
                     <td>{{ claim.character_name }}</td>
                     <td class="d-none d-sm-table-cell">{{ claim.play_period }}</td>
-                    <td class="d-none d-md-table-cell">{{ claim.xp_claimed }}</td>
+                    <td class="d-none d-md-table-cell">{{ claim.computed_xp }}</td>
                     <td class="d-none d-md-table-cell">{{ claim.approved_xp if claim.approved_xp else '-' }}</td>
                     <td>
                         {% if claim.status == 'pending' %}

@@ -32,7 +32,11 @@
             <tr data-href="{{ url_for('claims.review', row_id=claim.row_index) }}">
                 <td><strong>{{ claim.character_name }}</strong></td>
                 <td class="d-none d-md-table-cell">{{ claim.play_period }}</td>
-                <td><span class="badge bg-success">{{ claim.xp_claimed }} XP</span></td>
+                <td>
+                    <span class="badge bg-success">{{ claim.computed_xp }} XP</span>
+                    {% if claim.path != 'none' %}<span class="badge bg-info ms-1">{{ claim.path }}</span>{% endif %}
+                    {% if claim.staff_claim_conflict %}<span class="badge bg-warning text-dark ms-1" title="Staff/Helper conflict"><i class="bi bi-exclamation-triangle"></i></span>{% endif %}
+                </td>
                 <td class="d-none d-sm-table-cell"><small class="text-muted">{{ claim.timestamp }}</small></td>
                 <td class="text-end">
                     <a href="{{ url_for('claims.review', row_id=claim.row_index) }}"

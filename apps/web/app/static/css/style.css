@@ -1,22 +1,83 @@
-/* MCbN XP Tracker — Dark theme styling */
+/* NYbN XP Tracker — Dark theme styling */
 
 :root {
-    --vtm-red: #8b0000;
-    --vtm-red-light: #b22222;
-    --vtm-gold: #c5a55a;
-    --sidebar-width: 220px;
+    /* ── Brand accent — bridge red, used sparingly ── */
+    --vtm-red:       #9e1b1b;
+    --vtm-red-deep:  #8a1818;
+    --vtm-red-light: #b52222;   /* legacy compat */
+    --vtm-steel:     #3a5a7a;   /* secondary cold blue */
+    --vtm-gold:      #c5a55a;   /* borough system only */
+
+    /* ── Dimensions ── */
+    --sidebar-width: 250px;
+    --radius:        4px;
+    --radius-sm:     2px;
+
+    /* ── Background layers — cold blue-black, never neutral ── */
+    --bg-sidebar: #0a0c12;
+    --bg-page:    #14161f;
+    --bg-panel:   #1e2230;
+    --bg-hover:   #262b3a;
+
+    /* ── Text — cool off-white, never pure white ── */
+    --text-primary:  #d6d9e0;
+    --text-muted:    #8a8f9e;
+    --text-disabled: #565b69;
+
+    /* ── Bootstrap overrides — sharp edges ── */
+    --bs-border-radius:      4px;
+    --bs-border-radius-sm:   2px;
+    --bs-border-radius-lg:   4px;
+    --bs-border-radius-xl:   4px;
+    --bs-card-border-radius: 4px;
+    --bs-body-bg:            #14161f;
+    --bs-body-color:         #d6d9e0;
 }
 
 body {
-    background-color: #1a1a2e;
-    color: #e0e0e0;
-    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background-color: var(--bg-page);
+    color: var(--text-primary);
+    font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    font-size: 0.925rem;
+}
+
+/* Grain overlay — felt-not-seen atmospheric surface texture */
+body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 9000;
+    opacity: 0.055;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+    background-size: 256px 256px;
+    background-repeat: repeat;
+}
+
+/* Blood splatter — one structural accent, bottom-right corner      */
+/* Darker-than-background, not red. Felt, not decorative.           */
+main.flex-grow-1::after {
+    content: '';
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    width: 420px;
+    height: 420px;
+    pointer-events: none;
+    z-index: 8998;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cg opacity='0.72' fill='%23180808'%3E%3C!-- Main mass --%3E%3Cpath d='M142,128 C158,114 170,122 166,142 C162,160 146,167 131,160 C116,153 126,142 142,128 Z'/%3E%3C!-- Drip streak --%3E%3Cpath d='M150,160 C152,172 150,186 146,191 C143,195 140,193 141,187 C143,178 146,170 150,160 Z'/%3E%3C!-- Secondary drip --%3E%3Cpath d='M134,165 C133,174 130,181 127,182 C125,183 124,180 126,176 C128,170 131,167 134,165 Z'/%3E%3C!-- Satellite drops --%3E%3Ccircle cx='117' cy='150' r='7'/%3E%3Ccircle cx='160' cy='167' r='5'/%3E%3Ccircle cx='168' cy='134' r='3.5'/%3E%3Ccircle cx='124' cy='167' r='3'/%3E%3Ccircle cx='110' cy='162' r='2'/%3E%3Ccircle cx='172' cy='150' r='2.5'/%3E%3Ccircle cx='155' cy='176' r='2'/%3E%3C!-- Thin streak --%3E%3Cpath d='M135,152 C129,158 122,163 118,165' stroke='%23180808' stroke-width='2.5' stroke-linecap='round' fill='none'/%3E%3C!-- Fine scatter --%3E%3Ccircle cx='104' cy='158' r='1.5'/%3E%3Ccircle cx='176' cy='142' r='1.5'/%3E%3Ccircle cx='162' cy='180' r='1.2'/%3E%3Ccircle cx='113' cy='172' r='1'/%3E%3C/g%3E%3C/svg%3E");
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: bottom right;
+    opacity: 0.55;
 }
 
 /* ── Typography ─────────────────────────────────────────────────── */
 h1, h2, h3, h4, h5, h6 {
-    font-family: 'Cinzel', 'Segoe UI', serif;
+    font-family: 'Cinzel', serif;
     letter-spacing: 0.02em;
+    color: var(--text-primary);
+    font-weight: 600;
 }
 
 .navbar-brand {
@@ -24,13 +85,21 @@ h1, h2, h3, h4, h5, h6 {
     letter-spacing: 0.05em;
 }
 
+.text-muted {
+    color: var(--text-muted) !important;
+}
+
+small, .small {
+    color: var(--text-muted);
+}
+
 /* ── Login page ─────────────────────────────────────────────────── */
 body.login-page {
     background-image:
-        linear-gradient(rgba(10, 10, 20, 0.70), rgba(10, 10, 20, 0.88)),
-        url('/static/images/music.png');
+        linear-gradient(160deg, rgba(6, 8, 18, 0.55) 0%, rgba(8, 12, 28, 0.72) 100%),
+        url('/static/images/nyc.jpg');
     background-size: cover;
-    background-position: center 40%;
+    background-position: center 32%;
     background-attachment: fixed;
     min-height: 100vh;
 }
@@ -38,11 +107,15 @@ body.login-page {
 .login-card {
     max-width: 420px;
     margin: 80px auto;
-    background-color: rgba(22, 33, 62, 0.92);
-    border: 1px solid var(--vtm-red);
-    backdrop-filter: blur(8px);
-    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(139, 0, 0, 0.25);
-    border-radius: 8px;
+    background-color: rgba(10, 12, 18, 0.9);
+    border: 1px solid rgba(138, 24, 24, 0.45);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    box-shadow:
+        0 12px 50px rgba(0, 0, 0, 0.88),
+        0 0 0 1px rgba(138, 24, 24, 0.15),
+        0 0 60px rgba(100, 8, 8, 0.08);
+    border-radius: var(--radius) !important;
     overflow: hidden;
 }
 
@@ -71,18 +144,21 @@ body.login-page {
 
 .login-logo {
     width: 100%;
-    height: 120px;
+    height: 140px;
     object-fit: cover;
-    object-position: center 55%;
+    object-position: center 28%;
     display: block;
-    opacity: 0.85;
+    opacity: 0.9;
 }
 
 /* ── Sidebar ────────────────────────────────────────────────────── */
 .sidebar {
     width: var(--sidebar-width);
     flex-shrink: 0;
-    background-color: #16213e !important;
+    background-color: var(--bg-sidebar) !important;
+    /* Right edge: one structural red line, like the edge of a girder */
+    box-shadow: 1px 0 0 rgba(138, 24, 24, 0.25), 4px 0 20px rgba(0, 0, 0, 0.5);
+    border-color: transparent !important;
 }
 
 @media (min-width: 768px) {
@@ -93,46 +169,372 @@ body.login-page {
     }
 }
 
-.sidebar-logo-img {
-    width: 100%;
-    height: 90px;
-    object-fit: cover;
-    object-position: center 50%;
-    display: block;
-    border-bottom: 1px solid rgba(139, 0, 0, 0.4);
+/* Brand hero at top of sidebar */
+.sidebar-brand-area {
+    padding: 1.4rem 1rem 1.3rem;
+    position: relative;
+    overflow: hidden;
+    border-bottom: 1px solid rgba(138, 24, 24, 0.2);
+    flex-shrink: 0;
 }
 
+/* Atmospheric gradient: bridge red bleeds from top-left, cold blue upper-right */
+.sidebar-brand-area::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(135deg, rgba(100, 8, 8, 0.48) 0%, rgba(8, 10, 18, 0.82) 55%, rgba(6, 8, 16, 0.96) 100%),
+        radial-gradient(ellipse 110% 85% at 90% 10%, rgba(26, 60, 130, 0.1) 0%, transparent 58%);
+    pointer-events: none;
+}
+
+/* Top highlight — one structural line */
+.sidebar-brand-area::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(to right, rgba(158, 27, 27, 0.6), rgba(58, 90, 122, 0.15), transparent);
+    pointer-events: none;
+}
+
+.sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    position: relative;
+}
+
+.sidebar-brand-icon {
+    font-size: 1.6rem;
+    color: var(--vtm-red);
+    line-height: 1;
+    filter: drop-shadow(0 0 10px rgba(158, 27, 27, 0.9)) drop-shadow(0 0 3px rgba(158, 27, 27, 0.5));
+}
+
+.sidebar-brand-title {
+    font-family: 'Cinzel', serif;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: 0.14em;
+    line-height: 1.15;
+    text-shadow: 0 2px 16px rgba(0, 0, 0, 1);
+}
+
+.sidebar-brand-sub {
+    font-size: 0.57rem;
+    font-family: 'Inter', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    color: var(--text-muted);
+    line-height: 1;
+}
+
+/* Nav links — three states per guide */
 .sidebar .nav-link {
-    color: #a0a0b0;
-    border-radius: 6px;
-    margin: 2px 0;
-    padding: 8px 12px;
-    font-size: 0.9rem;
+    color: var(--text-muted);
+    border-radius: var(--radius-sm);
+    margin: 1px 0;
+    padding: 8px 14px;
+    font-size: 0.875rem;
+    font-family: 'Inter', sans-serif;
+    border-left: 3px solid transparent;
+    transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease;
 }
 
+/* Hover: lift, no red */
 .sidebar .nav-link:hover {
-    color: #fff;
-    background-color: rgba(139, 0, 0, 0.2);
+    color: var(--text-primary);
+    background-color: var(--bg-hover);
+    border-left-color: transparent;
 }
 
+/* Active: solid red bar on left edge — the eye's anchor */
 .sidebar .nav-link.active {
     color: #fff;
-    background-color: var(--vtm-red);
+    background-color: rgba(158, 27, 27, 0.12);
+    border-left-color: var(--vtm-red);
 }
 
 .sidebar .nav-link i {
-    width: 20px;
-    margin-right: 8px;
+    width: 18px;
+    margin-right: 10px;
+    opacity: 0.6;
+}
+
+.sidebar .nav-link:hover i {
+    opacity: 0.85;
+}
+
+.sidebar .nav-link.active i {
+    opacity: 1;
+}
+
+/* Sidebar footer */
+.sidebar .mt-auto p, .sidebar .mt-auto small {
+    color: var(--text-disabled);
+}
+
+.sidebar hr {
+    border-color: rgba(255, 255, 255, 0.05) !important;
+    margin-left: 0.75rem;
+    margin-right: 0.75rem;
+}
+
+/* ── Borough identity ────────────────────────────────────────────── */
+:root {
+    --borough-manhattan: #c0392b;  /* crimson — Camarilla power */
+    --borough-brooklyn:  #1e8449;  /* forest green */
+    --borough-queens:    #c49010;  /* amber gold */
+    --borough-bronx:     #1a6fc4;  /* electric blue */
+    --borough-staten:    #c0581a;  /* burnt orange */
+}
+
+.borough-manhattan { --borough-color: var(--borough-manhattan); }
+.borough-brooklyn  { --borough-color: var(--borough-brooklyn); }
+.borough-queens    { --borough-color: var(--borough-queens); }
+.borough-bronx     { --borough-color: var(--borough-bronx); }
+.borough-staten    { --borough-color: var(--borough-staten); }
+
+.borough-header {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding-bottom: 0.65rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.borough-pip {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--borough-color, var(--vtm-red));
+    box-shadow: 0 0 8px var(--borough-color, var(--vtm-red)), 0 0 2px rgba(255,255,255,0.15);
+    flex-shrink: 0;
+}
+
+.borough-title {
+    font-family: 'Cinzel', serif;
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: var(--borough-color, var(--vtm-red));
+    line-height: 1;
+}
+
+.borough-rule {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(to right, var(--borough-color, var(--vtm-red)), transparent);
+    opacity: 0.22;
+    margin-left: 0.25rem;
+}
+
+/* ── Global components ───────────────────────────────────────────── */
+
+/* Cards — panels sit slightly above the page, aged paper surface */
+.card {
+    background-color: var(--bg-panel);
+    /* Grunge paper texture layered over panel color — felt-not-seen */
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.44 0.62' numOctaves='5' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)' opacity='0.085'/%3E%3C/svg%3E");
+    background-size: 400px 400px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: var(--radius) !important;
+}
+
+.card-header {
+    background-color: rgba(255, 255, 255, 0.03);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    padding: 0.7rem 1rem;
+}
+
+.card-body {
+    color: var(--text-primary);
+}
+
+.card-footer {
+    background-color: transparent;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Buttons — primary red, secondary cold */
+.btn-danger, .btn-danger:focus {
+    background-color: var(--vtm-red);
+    border-color: var(--vtm-red);
+    color: #fff;
+    border-radius: var(--radius-sm);
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+}
+
+.btn-danger:hover {
+    background-color: var(--vtm-red-deep);
+    border-color: var(--vtm-red-deep);
+}
+
+.btn-outline-danger {
+    color: var(--vtm-red);
+    border-color: var(--vtm-red);
+    border-radius: var(--radius-sm);
+    font-family: 'Inter', sans-serif;
+}
+
+.btn-outline-danger:hover {
+    background-color: var(--vtm-red);
+    border-color: var(--vtm-red);
+}
+
+.btn-outline-secondary, .btn-secondary {
+    border-radius: var(--radius-sm);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.875rem;
+}
+
+.btn-primary {
+    background-color: var(--vtm-steel);
+    border-color: var(--vtm-steel);
+    border-radius: var(--radius-sm);
+    font-family: 'Inter', sans-serif;
+}
+
+.btn-sm {
+    border-radius: var(--radius-sm);
+}
+
+/* Tables */
+.table {
+    font-size: 0.875rem;
+    font-family: 'Inter', sans-serif;
+    --bs-table-bg: transparent;
+}
+
+.table th {
+    color: var(--text-muted);
+    border-color: rgba(255, 255, 255, 0.07);
+    font-weight: 500;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+}
+
+.table td {
+    border-color: rgba(255, 255, 255, 0.05);
+    vertical-align: middle;
+    color: var(--text-primary);
+}
+
+/* Alternating rows */
+.table-dark {
+    --bs-table-bg: var(--bg-panel);
+    --bs-table-striped-bg: #1a1d28;
+    --bs-table-hover-bg: var(--bg-hover);
+    --bs-table-border-color: rgba(255,255,255,0.05);
+    --bs-table-color: var(--text-primary);
+}
+
+.table-striped > tbody > tr:nth-of-type(odd) > * {
+    background-color: rgba(255, 255, 255, 0.025);
+}
+
+/* Forms */
+.form-control, .form-select {
+    background-color: var(--bg-hover);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.875rem;
+}
+
+.form-control:focus, .form-select:focus {
+    background-color: var(--bg-hover);
+    border-color: rgba(158, 27, 27, 0.5);
+    box-shadow: 0 0 0 3px rgba(158, 27, 27, 0.12);
+    color: var(--text-primary);
+}
+
+.form-control::placeholder {
+    color: var(--text-disabled);
+}
+
+.form-label {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    font-family: 'Inter', sans-serif;
+    margin-bottom: 0.3rem;
+}
+
+.form-text {
+    color: var(--text-disabled);
+    font-size: 0.78rem;
+}
+
+/* Badges */
+.badge {
+    border-radius: var(--radius-sm);
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+}
+
+.bg-danger { background-color: var(--vtm-red) !important; }
+.bg-secondary { background-color: #2a2f3d !important; }
+
+/* Alerts */
+.alert {
+    border-radius: var(--radius);
+    border-left-width: 3px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.875rem;
+}
+
+.alert-danger { border-left-color: var(--vtm-red); }
+.alert-success { border-left-color: #2e7d32; }
+.alert-warning { border-left-color: #c49010; }
+.alert-info { border-left-color: var(--vtm-steel); }
+
+/* Collapse / accordion borders */
+.border-secondary { border-color: rgba(255, 255, 255, 0.07) !important; }
+
+/* Offcanvas */
+.offcanvas {
+    background-color: var(--bg-sidebar);
+}
+
+/* Dropdown */
+.dropdown-menu {
+    background-color: var(--bg-panel);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius);
+}
+
+.dropdown-item {
+    color: var(--text-primary);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.875rem;
+}
+
+.dropdown-item:hover {
+    background-color: var(--bg-hover);
+    color: #fff;
 }
 
 /* ── Player navbar ──────────────────────────────────────────────── */
 .player-navbar {
     background-image:
-        linear-gradient(rgba(22, 33, 62, 0.88), rgba(22, 33, 62, 0.95)),
-        url('/static/images/music.png');
+        linear-gradient(rgba(8, 12, 26, 0.84), rgba(8, 12, 26, 0.94)),
+        url('/static/images/nyc.jpg');
     background-size: cover;
-    background-position: center 45%;
-    border-bottom: 1px solid rgba(139, 0, 0, 0.5) !important;
+    background-position: center 22%;
+    border-bottom: 1px solid rgba(139, 0, 0, 0.45) !important;
 }
 
 .player-navbar .navbar-brand img {
@@ -146,12 +548,12 @@ body.login-page {
 .stat-card {
     border-top: 3px solid transparent;
     transition: transform 0.15s ease, box-shadow 0.15s ease;
-    background-color: #16213e;
+    background-color: var(--bg-panel);
 }
 
 .stat-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
 }
 
 .stat-card .stat-icon {
@@ -203,11 +605,11 @@ tr[data-href]:hover td {
 
 /* ── Claim category cards ───────────────────────────────────────── */
 .claim-category {
-    border-left: 3px solid #333;
+    border-left: 3px solid rgba(255,255,255,0.08);
     padding: 8px 12px;
     margin-bottom: 8px;
-    background-color: #1e1e30;
-    border-radius: 0 4px 4px 0;
+    background-color: var(--bg-panel);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 }
 
 .claim-category.claimed {
@@ -301,9 +703,9 @@ tr.has-clan-color {
 
 /* ── Character hero ─────────────────────────────────────────────── */
 .char-hero {
-    background: linear-gradient(135deg, #16213e 0%, #1a1a2e 65%, rgba(139,0,0,0.25) 100%);
-    border: 1px solid rgba(139, 0, 0, 0.35);
-    border-radius: 8px;
+    background: linear-gradient(135deg, var(--bg-panel) 0%, #191c28 65%, rgba(158, 27, 27, 0.15) 100%);
+    border: 1px solid rgba(158, 27, 27, 0.25);
+    border-radius: var(--radius);
     padding: 1.75rem 2rem;
     margin-bottom: 1.5rem;
     position: relative;
@@ -859,11 +1261,11 @@ tr.has-clan-color {
 }
 
 .evidence-card {
-    border-left: 3px solid #2a2a3e;
-    border-radius: 0 6px 6px 0;
+    border-left: 3px solid rgba(255,255,255,0.06);
+    border-radius: 0 var(--radius) var(--radius) 0;
     padding: 0.65rem 0.9rem;
     margin-bottom: 0.4rem;
-    background: #1a1a2e;
+    background: var(--bg-panel);
     transition: border-color 0.15s;
 }
 

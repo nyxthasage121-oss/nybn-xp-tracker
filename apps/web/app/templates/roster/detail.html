@@ -105,6 +105,31 @@
               <small class="text-muted d-block">{{ char.player_discord }}</small>
               {% endif %}
             </dd>
+            {% if char.xp_cap_reached %}
+            <dt class="col-sm-4 text-muted small">XP Cap</dt>
+            <dd class="col-sm-8">
+              <span class="badge bg-danger">Cap reached {{ char.xp_cap_reached_date }}</span>
+              {% if char.retirement_deadline %}
+              <span class="text-muted small d-block">Retire by {{ char.retirement_deadline }}</span>
+              {% endif %}
+            </dd>
+            {% elif cap_reached is defined %}
+            <dt class="col-sm-4 text-muted small">XP to Cap</dt>
+            <dd class="col-sm-8">
+              <span class="text-muted small">{{ xp_to_cap }} XP remaining (cap: 350)</span>
+            </dd>
+            {% endif %}
+            {% if char.retired %}
+            <dt class="col-sm-4 text-muted small">Status</dt>
+            <dd class="col-sm-8"><span class="badge bg-secondary">Retired {{ char.retired_date }}</span></dd>
+            {% endif %}
+            {% if char.ingrained_discipline_flaw %}
+            <dt class="col-sm-4 text-muted small">Ingrained Flaw</dt>
+            <dd class="col-sm-8">
+              {{ char.ingrained_discipline_name or 'Discipline' }}
+              <span class="badge bg-secondary ms-1">{{ char.ingrained_discipline_xp_used }}/15 XP used</span>
+            </dd>
+            {% endif %}
             {% if char.enemy %}
             <dt class="col-sm-4 text-muted small">Enemy</dt>
             <dd class="col-sm-8">{{ char.enemy }}</dd>

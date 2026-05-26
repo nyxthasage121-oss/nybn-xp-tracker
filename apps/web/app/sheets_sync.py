@@ -48,11 +48,11 @@ class SheetsSyncWorker:
         _executor.submit(_safe)
 
     def sync_add_spend(self, character_name: str, spend_category: str, trait_name: str,
-                       current_dots: int, new_dots: int, is_in_clan: bool, justification: str) -> None:
+                       current_dots: int, new_dots: int, justification: str) -> None:
         _run(self._sheets.submit_spend_request,
              character_name=character_name, spend_category=spend_category,
              trait_name=trait_name, current_dots=current_dots, new_dots=new_dots,
-             is_in_clan=is_in_clan, justification=justification)
+             justification=justification)
 
     def sync_add_ledger_entry(self, character_name: str, date: str, awarded: int,
                                spent: int, reason: str, staff_user: str) -> None:

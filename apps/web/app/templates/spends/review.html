@@ -76,6 +76,59 @@
         </div>
         {% endif %}
 
+        <!-- Humanity Conditions (shown when is_humanity) -->
+        {% if spend.is_humanity %}
+        <div class="card mb-3 border-warning">
+            <div class="card-header py-2 bg-warning bg-opacity-10">
+                <small class="text-warning" style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.08em;">
+                    <i class="bi bi-heart-pulse"></i> Humanity Conditions (player-certified)
+                </small>
+            </div>
+            <div class="card-body">
+                <div class="d-flex flex-column gap-1">
+                    <div>
+                        {% if spend.humanity_no_frenzy %}
+                        <i class="bi bi-check-circle-fill text-success"></i>
+                        {% else %}
+                        <i class="bi bi-x-circle-fill text-danger"></i>
+                        {% endif %}
+                        <span class="small ms-1">No frenzy in the past 2 weeks (IRL)</span>
+                    </div>
+                    <div>
+                        {% if spend.humanity_no_stains %}
+                        <i class="bi bi-check-circle-fill text-success"></i>
+                        {% else %}
+                        <i class="bi bi-x-circle-fill text-danger"></i>
+                        {% endif %}
+                        <span class="small ms-1">No unmitigated Stains in the past 2 weeks</span>
+                    </div>
+                    <div>
+                        {% if spend.humanity_humane_act %}
+                        <i class="bi bi-check-circle-fill text-success"></i>
+                        {% else %}
+                        <i class="bi bi-x-circle-fill text-danger"></i>
+                        {% endif %}
+                        <span class="small ms-1">Performed a humane act or played path accordingly</span>
+                    </div>
+                </div>
+                {% if not (spend.humanity_no_frenzy and spend.humanity_no_stains and spend.humanity_humane_act) %}
+                <div class="alert alert-danger mt-2 mb-0 py-2">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    Not all Humanity conditions were certified. Verify with the player before approving.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Ingrained Discipline Flag -->
+        {% if spend.is_ingrained_discipline %}
+        <div class="alert alert-info py-2 mb-3">
+            <i class="bi bi-info-circle"></i>
+            <strong>Ingrained Discipline Flaw:</strong> This spend draws from the character's 15 XP flaw budget. Verify the character has the flaw and sufficient budget remaining.
+        </div>
+        {% endif %}
+
         <!-- Cost validation -->
         <div class="card mb-3">
             <div class="card-header py-2">

@@ -150,6 +150,8 @@ def character(name):
         if c.status.lower() != 'denied'
     }
 
+    criteria = db_service.get_active_criteria()
+
     return render_template(
         'player/character.html',
         char=char,
@@ -157,6 +159,8 @@ def character(name):
         total_xp=xp['total_xp'],
         total_spends=xp['total_spends'] + xp['ledger_spent'],
         available_xp=xp['available_xp'],
+        xp_to_cap=xp.get('xp_to_cap', 350),
+        cap_reached=xp.get('cap_reached', False),
         approved_claims=approved_claims,
         approved_spends=approved_spends,
         pending_claims_count=len(pending_claims),
@@ -164,6 +168,7 @@ def character(name):
         ledger=ledger,
         open_periods=open_periods,
         claimed_periods=claimed_periods,
+        criteria=criteria,
         spend_categories=SPEND_CATEGORIES,
     )
 
@@ -188,67 +193,60 @@ def submit_claim(name):
         flash('That play period is not open for submissions.', 'danger')
         return redirect(url_for('player.character', name=name))
 
-    # Collect checked categories and their links
-    category_keys = [
-        'posted_once', 'hunting_awakening', 'scene_with_another',
-        'conflict', 'combat', 'unmitigated_stain', 'wildcard',
-    ]
-    categories = {}
-    missing_links = []
-    for key in category_keys:
-        if request.form.get(key):
-            link = request.form.get(f'{key}_link', '').strip()
-            if not link:
-                missing_links.append(key)
-            categories[key] = link
-    # Capture wildcard reason and amount if wildcard was checked
-    if 'wildcard' in categories:
-        wildcard_reason = request.form.get('wildcard_reason', '').strip()
-        if not wildcard_reason:
-            flash('Please provide a reason for the wildcard XP claim.', 'danger')
-            return redirect(url_for('player.character', name=name))
-        categories['wildcard_reason'] = wildcard_reason
-        wildcard_amount = request.form.get('wildcard_amount', '1').strip()
-        try:
-            wildcard_amount = max(1, int(wildcard_amount))
-        except (ValueError, TypeError):
-            wildcard_amount = 1
-        wildcard_amount = min(wildcard_amount, 10)
-        categories['wildcard_amount'] = str(wildcard_amount)
+    # Collect checked criteria IDs from dynamic form
+    try:
+        claimed_criteria_ids = [
+            int(cid) for cid in request.form.getlist('criteria_ids')
+        ]
+    except (ValueError, TypeError):
+        flash('Invalid criteria selection.', 'danger')
+        return redirect(url_for('player.character', name=name))
 
-    if not categories:
+    if not claimed_criteria_ids:
         flash('Please select at least one XP category to claim.', 'danger')
         return redirect(url_for('player.character', name=name))
 
-    if missing_links:
-        flash('A Discord post link is required for each claimed category.', 'danger')
+    # RP links submitted as one per form field (or newline-separated textarea)
+    rp_links = [ln.strip() for ln in request.form.getlist('rp_links') if ln.strip()]
+
+    # Staff / helper path
+    path = request.form.get('path', 'none').strip()
+    if path not in ('none', 'staff', 'helper'):
+        path = 'none'
+    helper_note = request.form.get('helper_note', '').strip()
+    if path == 'helper' and not helper_note:
+        flash('A note is required for Helper Activity claims.', 'danger')
         return redirect(url_for('player.character', name=name))
 
     try:
-        # Count actual XP (standard cats = 1 each, wildcard = its amount)
-        wc_amt = int(categories.get('wildcard_amount', 1)) if 'wildcard' in categories else 0
-        xp_count = sum(1 for k in category_keys if k in categories and k != 'wildcard') + wc_amt
         discord_name = session.get('discord_name', 'unknown')
-        db_service.submit_xp_claim(name, play_period, categories)
+        claim = db_service.submit_xp_claim(
+            character_name=name,
+            play_period=play_period,
+            claimed_criteria_ids=claimed_criteria_ids,
+            rp_links=rp_links,
+            path=path,
+            helper_note=helper_note,
+        )
         if sheets_sync:
-            sheets_sync.sync_add_claim(name, play_period, categories)
+            sheets_sync.sync_add_claim(name, play_period, {})
+        n = len(claimed_criteria_ids)
         db_service.log_action(
             staff_user=f'player:{discord_name}',
             action_type='player_claim_submitted',
             target=name,
-            details=f'Claimed {xp_count} XP for {play_period}',
+            details=f'Claimed {claim.computed_xp} XP for {play_period} ({n} criteria)',
         )
         if sheets_sync:
             sheets_sync.sync_log_action(
                 staff_user=f'player:{discord_name}',
                 action_type='player_claim_submitted',
                 target=name,
-                details=f'Claimed {xp_count} XP for {play_period}',
+                details=f'Claimed {claim.computed_xp} XP for {play_period}',
             )
         flash(
-            f'XP claim submitted for {play_period} — '
-            f'{len(categories)} categor{"y" if len(categories) == 1 else "ies"} '
-            f'claimed. Awaiting staff review.',
+            f'XP claim submitted for {play_period} — {claim.computed_xp} XP across '
+            f'{n} categor{"y" if n == 1 else "ies"}. Awaiting staff review.',
             'success',
         )
     except ValueError as e:
@@ -284,7 +282,11 @@ def submit_spend(name):
         flash('Invalid dot values.', 'danger')
         return redirect(url_for('player.character', name=name))
 
-    is_in_clan = bool(request.form.get('is_in_clan'))
+    # Humanity conditional flags (player self-certifies all three)
+    is_humanity = spend_category == 'Humanity'
+    humanity_no_frenzy = bool(request.form.get('humanity_no_frenzy')) if is_humanity else False
+    humanity_no_stains = bool(request.form.get('humanity_no_stains')) if is_humanity else False
+    humanity_humane_act = bool(request.form.get('humanity_humane_act')) if is_humanity else False
 
     if not justification:
         flash('Please provide a justification for your spend request.', 'danger')
@@ -301,8 +303,10 @@ def submit_spend(name):
             trait_name=trait_name,
             current_dots=current_dots,
             new_dots=new_dots,
-            is_in_clan=is_in_clan,
             justification=justification,
+            humanity_no_frenzy=humanity_no_frenzy,
+            humanity_no_stains=humanity_no_stains,
+            humanity_humane_act=humanity_humane_act,
         )
         if sheets_sync:
             sheets_sync.sync_add_spend(
@@ -311,7 +315,6 @@ def submit_spend(name):
                 trait_name=trait_name,
                 current_dots=current_dots,
                 new_dots=new_dots,
-                is_in_clan=is_in_clan,
                 justification=justification,
             )
         db_service.log_action(

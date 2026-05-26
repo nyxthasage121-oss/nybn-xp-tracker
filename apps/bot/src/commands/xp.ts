@@ -76,6 +76,18 @@ export const data = new SlashCommandBuilder()
   )
   .addSubcommand((s) =>
     s
+      .setName('check')
+      .setDescription('Check your XP balance and cap status')
+      .addStringOption((o) =>
+        o
+          .setName('character')
+          .setDescription('Character name (optional if you only have one)')
+          .setAutocomplete(true)
+          .setRequired(false),
+      ),
+  )
+  .addSubcommand((s) =>
+    s
       .setName('claim')
       .setDescription('Submit a simple XP claim via adapter')
       .addStringOption((o) =>
@@ -291,7 +303,7 @@ async function suggestCubbyNames(
 export async function autocomplete(interaction: AutocompleteInteraction, { adapter }: CommandContext) {
   const option = interaction.options.getFocused(true);
   const sub = interaction.options.getSubcommand(false) ?? '';
-  const supportsCharacterAutocomplete = new Set(['submit', 'summary', 'claim', 'spend', 'test-reminder']);
+  const supportsCharacterAutocomplete = new Set(['submit', 'summary', 'check', 'claim', 'spend', 'test-reminder']);
   const supportsPeriodAutocomplete = new Set(['submit', 'claim']);
   const isCharacterLookup = supportsCharacterAutocomplete.has(sub) && option.name === 'character';
   const isPeriodLookup = supportsPeriodAutocomplete.has(sub) && option.name === 'play_period';
@@ -374,6 +386,68 @@ export async function execute(interaction: ChatInputCommandInteraction, { adapte
     return;
   }
 
+  if (sub === 'check') {
+    const characterArg = interaction.options.getString('character') ?? null;
+    logEvent('info', 'xp_check_start', { ...meta, character: characterArg ?? 'auto' });
+
+    await interaction.deferReply({ ephemeral: true });
+
+    try {
+      let characterNames: string[];
+
+      if (characterArg) {
+        characterNames = [characterArg];
+      } else {
+        const context = await adapter.getClaimContext(requester);
+        characterNames = context.activeCharacters;
+        if (characterNames.length === 0) {
+          await interaction.editReply(
+            'No active characters are linked to your Discord account. Contact staff to link your character.',
+          );
+          return;
+        }
+      }
+
+      const summaries = (
+        await Promise.all(characterNames.map((name) => adapter.getSummary(name, requester)))
+      ).filter((s): s is NonNullable<typeof s> => s !== null);
+
+      if (summaries.length === 0) {
+        await interaction.editReply(
+          characterArg
+            ? `Character "${characterArg}" not found or not linked to your account.`
+            : 'Could not load XP data. Try again in a moment.',
+        );
+        return;
+      }
+
+      const formatSummary = (s: (typeof summaries)[number]): string => {
+        const capLine = s.capReached
+          ? '🚨 **XP cap reached** (350/350) — retirement window is open.'
+          : `XP to cap: **${s.xpToCap}** / 350`;
+        return [
+          `**${s.characterName}**`,
+          `Available: **${s.availableXp} XP**`,
+          `Earned: ${s.earnedXp} XP  ·  Spent: ${s.totalSpends} XP`,
+          capLine,
+        ].join('\n');
+      };
+
+      const content =
+        summaries.length === 1
+          ? formatSummary(summaries[0])
+          : summaries.map(formatSummary).join('\n\n');
+
+      await interaction.editReply({ content });
+      logEvent('info', 'xp_check_done', { ...meta, count: summaries.length });
+    } catch (error) {
+      const message = `XP check failed: ${errorToMessage(error)}`;
+      await interaction.editReply({ content: message });
+      logEvent('error', 'xp_check_failed', { ...meta, error: errorToMessage(error) });
+    }
+    return;
+  }
+
   if (sub === 'claim') {
     await interaction.reply({
       content: `XP claims are now submitted through the player portal — the bot wizard is temporarily offline.\n👉 ${config.playerWebUrl}`,
@@ -410,10 +484,10 @@ export async function execute(interaction: ChatInputCommandInteraction, { adapte
   if (sub === 'help') {
     const lines = [
       '**XP Quick Help**',
+      '- `/xp check`: check your XP balance and cap status (ephemeral)',
       '- `/xp submit`: guided XP claim wizard (recommended)',
       '- `/xp claim`: quick claim (1-6 category/link pairs in one submission)',
       '- `/xp spend`: submit an XP spend request',
-      '- `/xp summary`: show your character XP totals',
       '- `/xp spend-cost`: preview spend XP cost',
       '',
       `Web player interface: ${config.playerWebUrl}`,

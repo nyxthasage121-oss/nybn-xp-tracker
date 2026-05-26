@@ -112,9 +112,11 @@ def create_app():
     if sheets_client:
         sheets_sync = SheetsSyncWorker(sheets_client)
 
-    # Create DB tables if they don't exist
+    # Create DB tables if they don't exist, then seed criteria on first run
     with app.app_context():
         db.create_all()
+        db_service.seed_criteria_if_empty()
+        db_service.seed_sites_if_empty()
 
     # Register blueprints
     from .blueprints.dashboard import bp as dashboard_bp
@@ -126,6 +128,9 @@ def create_app():
     from .blueprints.player import bp as player_bp
     from .blueprints.api import bp as api_bp
     from .blueprints.local_status import bp as local_status_bp
+    from .blueprints.criteria import bp as criteria_bp
+    from .blueprints.coteries import bp as coteries_bp
+    from .blueprints.sites import bp as sites_bp
 
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(claims_bp, url_prefix='/claims')
@@ -136,6 +141,9 @@ def create_app():
     app.register_blueprint(player_bp, url_prefix='/player')
     app.register_blueprint(api_bp, url_prefix='/api')
     app.register_blueprint(local_status_bp)
+    app.register_blueprint(criteria_bp, url_prefix='/criteria')
+    app.register_blueprint(coteries_bp, url_prefix='/coteries')
+    app.register_blueprint(sites_bp, url_prefix='/sites')
     csrf.exempt(api_bp)
 
     # Inject auth helpers into all templates

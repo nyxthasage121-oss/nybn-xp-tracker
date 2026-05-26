@@ -160,6 +160,9 @@ class DbCoterie(db.Model):
     created_at = db.Column(String(20), default='')
     created_by = db.Column(String(100), default='')  # staff Discord ID who created it
     active = db.Column(Boolean, default=True, index=True)
+    chasse = db.Column(Integer, default=0)
+    lien = db.Column(Integer, default=0)
+    portillon = db.Column(Integer, default=0)
 
 
 class DbCoterieMembership(db.Model):
@@ -197,3 +200,16 @@ class DbCoterieSpend(db.Model):
     review_date = db.Column(String(20), default='')
     st_notes = db.Column(Text, default='')
     timestamp = db.Column(String(20), default='')
+
+
+class DbHuntingSite(db.Model):
+    """A NYC hunting location with predator-type DCs, a site bonus, and optional coterie ownership."""
+    __tablename__ = 'hunting_sites'
+    id = db.Column(Integer, primary_key=True)
+    name = db.Column(String(200), nullable=False)
+    borough = db.Column(String(100), default='', index=True)
+    predator_types = db.Column(Text, default='[]')  # JSON: [{"type": str, "dc": int}]
+    bonus = db.Column(Text, default='')
+    coterie_id = db.Column(Integer, db.ForeignKey('coteries.id'), nullable=True, index=True)
+    active = db.Column(Boolean, default=True, index=True)
+    sort_order = db.Column(Integer, default=0)

@@ -14,6 +14,8 @@ export type XpSummary = {
   totalXp: number;
   totalSpends: number;
   availableXp: number;
+  xpToCap: number;
+  capReached: boolean;
 };
 
 export type ClaimContext = {

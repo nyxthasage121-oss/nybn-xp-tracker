@@ -1,6 +1,10 @@
-"""Static game calendar data for the MCbN chronicle."""
+"""Static game calendar data for the NYbN chronicle."""
 
+import sys
 from datetime import date
+
+# Windows uses %#d to strip leading zeros; Linux/macOS use %-d
+_DAY_FMT = '%#d' if sys.platform == 'win32' else '%-d'
 
 
 _RAW = [
@@ -68,8 +72,8 @@ def get_calendar():
             'note':       note,
             'start':      start,
             'end':        end,
-            'start_fmt':  start.strftime('%b %-d'),
-            'end_fmt':    end.strftime('%b %-d'),
+            'start_fmt':  start.strftime(f'%b {_DAY_FMT}'),
+            'end_fmt':    end.strftime(f'%b {_DAY_FMT}'),
             'status':     status,
             'days_until': days_until,
             'days_left':  days_left,

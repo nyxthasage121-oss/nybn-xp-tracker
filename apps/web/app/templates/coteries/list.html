@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block title %}Coteries — NYbN XP Tracker{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <h1 class="mb-0">Coteries</h1>
+    <button class="btn btn-danger" data-bs-toggle="collapse" data-bs-target="#create-coterie-form">
+      <i class="bi bi-plus-lg"></i> New Coterie
+    </button>
+  </div>
+
+  <!-- Create Coterie Form -->
+  <div class="collapse mb-4" id="create-coterie-form">
+    <div class="card border-secondary">
+      <div class="card-header fw-semibold">New Coterie</div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('coteries.create') }}">
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Name <span class="text-danger">*</span></label>
+              <input type="text" name="name" class="form-control" required maxlength="200"
+                     placeholder="e.g., The Primogen Council">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Description</label>
+              <input type="text" name="description" class="form-control" maxlength="500"
+                     placeholder="Optional short description">
+            </div>
+            <div class="col-md-2 d-flex align-items-end gap-2">
+              <button type="submit" class="btn btn-danger">Create</button>
+              <button type="button" class="btn btn-outline-secondary"
+                      data-bs-toggle="collapse" data-bs-target="#create-coterie-form">Cancel</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Coteries Table -->
+  {% if coteries %}
+  <div class="card">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-dark table-striped table-hover mb-0 align-middle">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th class="d-none d-sm-table-cell">Description</th>
+              <th class="text-center">Members</th>
+              <th class="text-center">Status</th>
+              <th class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in coteries %}
+            <tr>
+              <td class="fw-semibold">{{ c.name }}</td>
+              <td class="text-muted small d-none d-sm-table-cell">{{ c.description or '—' }}</td>
+              <td class="text-center">
+                <span class="badge {% if c.members | length >= coterie_max %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+                  {{ c.members | length }}/{{ coterie_max }}
+                </span>
+              </td>
+              <td class="text-center">
+                {% if c.active %}
+                  <span class="badge bg-success">Active</span>
+                {% else %}
+                  <span class="badge bg-secondary">Inactive</span>
+                {% endif %}
+              </td>
+              <td class="text-end">
+                <a href="{{ url_for('coteries.detail', coterie_id=c.coterie_id) }}"
+                   class="btn btn-sm btn-outline-secondary">
+                  <i class="bi bi-eye"></i> View
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="card">
+    <div class="card-body text-muted">
+      No coteries yet. Click "New Coterie" to create the first one.
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Coterie Rules Reference -->
+  <div class="card mt-4 mb-4 border-secondary">
+    <div class="card-header d-flex justify-content-between align-items-center"
+         style="cursor:pointer" data-bs-toggle="collapse" data-bs-target="#coterie-rules-list">
+      <span class="fw-semibold"><i class="bi bi-book"></i> Coterie Rules Reference</span>
+      <i class="bi bi-chevron-down"></i>
+    </div>
+    <div class="collapse" id="coterie-rules-list">
+      <div class="card-body">
+        <h6 class="text-danger">Formation</h6>
+        <ul class="small">
+          <li>Up to <strong>6 members</strong> per coterie (including founder).</li>
+          <li>Each member must be an active character not already in another coterie.</li>
+          <li>At creation: distribute <strong>5 dots</strong> across Chasse, Lien, and Portillon.</li>
+          <li>Coteries formed after a timeskip receive starting dots assigned by staff.</li>
+        </ul>
+        <h6 class="text-danger mt-3">Ratings</h6>
+        <ul class="small">
+          <li><strong>Chasse</strong> — Hunting grounds. Determines site entitlement and coterie-channel hunting DCs.</li>
+          <li><strong>Lien</strong> — Social standing and boons owed to the coterie.</li>
+          <li><strong>Portillon</strong> — Haven security. <em class="text-warning">Cannot exceed Chasse.</em></li>
+        </ul>
+        <h6 class="text-danger mt-3">Chasse &amp; Site Entitlement</h6>
+        <table class="table table-dark table-sm mb-3">
+          <thead><tr><th>Chasse</th><th>Sites Entitled</th><th>Hunting DC (coterie channel)</th></tr></thead>
+          <tbody>
+            <tr><td>0 – 1</td><td>0 sites</td><td>Chasse 1 → DC 5</td></tr>
+            <tr><td>2 – 3</td><td>1 site</td><td>Chasse 2 → DC 4 / Chasse 3 → DC 3</td></tr>
+            <tr><td>4</td><td>2 sites</td><td>Chasse 4 → DC 2</td></tr>
+            <tr><td>5</td><td>3 sites</td><td>Chasse 5 → DC 1</td></tr>
+          </tbody>
+        </table>
+        <h6 class="text-danger mt-3">Coterie Spends</h6>
+        <ul class="small">
+          <li>Cost is <strong>3 XP per dot</strong> per member for all three ratings.</li>
+          <li>All members must commit their share before staff can approve.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
