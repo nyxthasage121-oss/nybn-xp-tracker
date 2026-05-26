@@ -2,10 +2,10 @@
 
 :root {
     /* ── NYC Brooklyn Bridge palette — sampled from nyc.jpg ── */
-    /* Bridge cable rust-orange / Freedom Tower electric blue / window amber */
-    --vtm-red:       #c85218;   /* bridge cable orange */
-    --vtm-red-deep:  #9e4012;   /* deep shadow orange */
-    --vtm-red-light: #e07030;   /* highlight orange */
+    /* Blood red accent / Freedom Tower electric blue / window amber */
+    --vtm-red:       #cc1a1a;   /* blood red */
+    --vtm-red-deep:  #8b0000;   /* deep crimson */
+    --vtm-red-light: #e84040;   /* bright highlight red */
     --vtm-steel:     #2476e8;   /* Freedom Tower electric blue */
     --vtm-gold:      #d4a840;   /* building window amber */
 
