@@ -25,6 +25,42 @@
 </div>
 {% endif %}
 
+<!-- Player Portal quick-access (visible for all logged-in users) -->
+{% if is_logged_in %}
+<div class="card mb-4 border-secondary" style="background:rgba(255,255,255,.03)">
+  <div class="card-body py-3">
+    <div class="d-flex align-items-center gap-3 flex-wrap">
+      <div class="flex-shrink-0">
+        <i class="bi bi-person-circle" style="font-size:1.6rem;color:rgba(255,255,255,.4)"></i>
+      </div>
+      <div class="flex-grow-1">
+        <div class="fw-semibold mb-1" style="font-size:.85rem">Player Portal</div>
+        <div class="d-flex flex-wrap gap-2">
+          <a href="{{ url_for('player.my_characters') }}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-people"></i> My Characters
+          </a>
+          <a href="{{ url_for('player.my_characters') }}#" class="btn btn-sm btn-outline-secondary" title="Go to a character page, then open the IC Profile section">
+            <i class="bi bi-person-badge"></i> IC Profile
+          </a>
+          <a href="{{ url_for('player.my_characters') }}#" class="btn btn-sm btn-outline-secondary" title="Go to a character page, then open the Character Sheet section">
+            <i class="bi bi-person-vcard"></i> Character Sheet
+          </a>
+          <a href="{{ url_for('player.my_characters') }}#" class="btn btn-sm btn-outline-success" title="Go to a character page, then open the Claim XP section">
+            <i class="bi bi-plus-circle"></i> Claim XP
+          </a>
+          <a href="{{ url_for('player.my_characters') }}#" class="btn btn-sm btn-outline-danger" title="Go to a character page, then open the Request XP Spend section">
+            <i class="bi bi-cart-plus"></i> Spend XP
+          </a>
+        </div>
+      </div>
+      <div class="flex-shrink-0 d-none d-md-block text-end" style="font-size:.75rem;color:rgba(255,255,255,.35)">
+        Logged in as <span style="color:rgba(255,255,255,.55)">{{ current_discord_name }}</span>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
 <!-- Stat cards row 1: characters / claims / spends -->
 <div class="row mb-3">
   <div class="col-md-4 mb-3">

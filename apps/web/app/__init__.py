@@ -51,6 +51,8 @@ def _apply_schema_migrations() -> None:
         ("characters", "profile_locked",       "ALTER TABLE characters ADD COLUMN profile_locked BOOLEAN DEFAULT 0"),
         ("characters", "profile_last_edited",  "ALTER TABLE characters ADD COLUMN profile_last_edited VARCHAR(20) DEFAULT ''"),
         ("chronicle_settings", "profile_webhook_url", "ALTER TABLE chronicle_settings ADD COLUMN profile_webhook_url VARCHAR(500) DEFAULT ''"),
+        # v6: Character sheet JSON — imported from Progeny
+        ("characters", "sheet_json", "ALTER TABLE characters ADD COLUMN sheet_json TEXT DEFAULT ''"),
     ]
     for table, column, sql in migrations:
         if sql is None:

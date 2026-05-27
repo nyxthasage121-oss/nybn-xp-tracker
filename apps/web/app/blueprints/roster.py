@@ -1,5 +1,7 @@
 """Character roster management routes."""
 
+import json as _json
+
 from flask import (
     Blueprint, render_template, request, redirect, url_for, flash, abort
 )
@@ -150,6 +152,42 @@ def detail(name):
     pending_claims_count = sum(1 for c in claims if c.status.lower() == 'pending')
     pending_spends_count = sum(1 for s in spends if s.status.lower() == 'pending')
 
+    # Parse character sheet JSON for display
+    sheet_data = None
+    sheet_ctx: dict = {}
+    if char.sheet_json:
+        try:
+            raw = _json.loads(char.sheet_json)
+            if isinstance(raw, dict) and 'attributes' in raw and 'skills' in raw:
+                sheet_data = raw
+                discs: dict = {}
+                for power in raw.get('disciplines', []):
+                    disc = power.get('discipline', 'Unknown')
+                    discs.setdefault(disc, []).append(power)
+                for disc in discs:
+                    discs[disc].sort(key=lambda p: p.get('level', 0))
+                rituals: dict = {}
+                for r in raw.get('rituals', []):
+                    disc = r.get('discipline', 'Blood Sorcery')
+                    rituals.setdefault(disc, []).append(r)
+                ceremonies: dict = {}
+                for c in raw.get('ceremonies', []):
+                    disc = c.get('discipline', 'Oblivion')
+                    ceremonies.setdefault(disc, []).append(c)
+                specs: dict = {}
+                for s in raw.get('skillSpecialties', []):
+                    skill = s.get('skill', '')
+                    if skill:
+                        specs.setdefault(skill, []).append(s.get('specialty', ''))
+                sheet_ctx = {
+                    'disciplines_grouped': discs,
+                    'rituals_grouped': rituals,
+                    'ceremonies_grouped': ceremonies,
+                    'specialties': specs,
+                }
+        except (ValueError, KeyError, TypeError):
+            sheet_data = None
+
     return render_template(
         'roster/detail.html',
         char=char,
@@ -163,6 +201,8 @@ def detail(name):
         xp_to_cap=xp.get('xp_to_cap', 350),
         cap_reached=xp.get('cap_reached', False),
         ledger=ledger,
+        sheet_data=sheet_data,
+        sheet_ctx=sheet_ctx,
     )
 
 

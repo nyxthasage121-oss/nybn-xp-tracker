@@ -46,6 +46,9 @@ class DbCharacter(db.Model):
     profile_locked = db.Column(Boolean, default=False)        # staff can lock to prevent edits
     profile_last_edited = db.Column(String(20), default='')
 
+    # Character sheet (JSON imported from Progeny)
+    sheet_json = db.Column(Text, default='')
+
 
 class DbPlayPeriod(db.Model):
     __tablename__ = 'play_periods'

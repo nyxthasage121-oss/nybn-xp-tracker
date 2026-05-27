@@ -46,6 +46,9 @@ class Character:
     profile_locked: bool = False
     profile_last_edited: str = ''
 
+    # Character sheet (JSON imported from Progeny)
+    sheet_json: str = ''
+
 
 @dataclass
 class PlayerProfile:

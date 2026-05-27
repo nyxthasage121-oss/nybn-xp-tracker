@@ -1,5 +1,7 @@
 """Player-facing routes. Requires Discord authentication."""
 
+import json as _json
+
 from flask import (
     Blueprint, render_template, request, abort, flash, redirect, url_for,
     session,
@@ -160,6 +162,45 @@ def character(name):
 
     criteria = db_service.get_active_criteria()
 
+    # Parse Progeny character sheet JSON into display-ready structures
+    sheet_data = None
+    sheet_ctx: dict = {}
+    if char.sheet_json:
+        try:
+            raw = _json.loads(char.sheet_json)
+            if isinstance(raw, dict) and 'attributes' in raw and 'skills' in raw:
+                sheet_data = raw
+                # Group disciplines by discipline name, sorted by level
+                discs: dict = {}
+                for power in raw.get('disciplines', []):
+                    disc = power.get('discipline', 'Unknown')
+                    discs.setdefault(disc, []).append(power)
+                for disc in discs:
+                    discs[disc].sort(key=lambda p: p.get('level', 0))
+                # Group rituals and ceremonies similarly
+                rituals: dict = {}
+                for r in raw.get('rituals', []):
+                    disc = r.get('discipline', 'Blood Sorcery')
+                    rituals.setdefault(disc, []).append(r)
+                ceremonies: dict = {}
+                for c in raw.get('ceremonies', []):
+                    disc = c.get('discipline', 'Oblivion')
+                    ceremonies.setdefault(disc, []).append(c)
+                # Index skill specialties by skill name
+                specs: dict = {}
+                for s in raw.get('skillSpecialties', []):
+                    skill = s.get('skill', '')
+                    if skill:
+                        specs.setdefault(skill, []).append(s.get('specialty', ''))
+                sheet_ctx = {
+                    'disciplines_grouped': discs,
+                    'rituals_grouped': rituals,
+                    'ceremonies_grouped': ceremonies,
+                    'specialties': specs,
+                }
+        except (ValueError, KeyError, TypeError):
+            sheet_data = None
+
     return render_template(
         'player/character.html',
         char=char,
@@ -178,6 +219,8 @@ def character(name):
         claimed_periods=claimed_periods,
         criteria=criteria,
         spend_categories=SPEND_CATEGORIES,
+        sheet_data=sheet_data,
+        sheet_ctx=sheet_ctx,
     )
 
 
@@ -366,6 +409,30 @@ def save_profile(name):
     try:
         db_service.save_character_profile(name, fields, discord_name)
         flash('IC Profile saved successfully.', 'success')
+    except ValueError as e:
+        flash(str(e), 'danger')
+
+    return redirect(url_for('player.character', name=name))
+
+
+@bp.route('/<name>/sheet', methods=['POST'])
+@require_character_owner
+def import_sheet(name):
+    """Import a Progeny character sheet JSON export."""
+    char = db_service.get_character(name)
+    if not char or not char.active:
+        abort(404)
+
+    discord_name = session.get('discord_name', 'unknown')
+    sheet_json = request.form.get('sheet_json', '').strip()
+
+    if not sheet_json:
+        flash('Please paste your Progeny character JSON before importing.', 'danger')
+        return redirect(url_for('player.character', name=name))
+
+    try:
+        db_service.save_sheet_json(name, sheet_json, discord_name)
+        flash('Character sheet imported successfully.', 'success')
     except ValueError as e:
         flash(str(e), 'danger')
 

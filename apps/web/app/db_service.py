@@ -93,6 +93,7 @@ def _row_to_character(row: DbCharacter) -> Character:
         profile_biography=row.profile_biography or '',
         profile_locked=bool(row.profile_locked),
         profile_last_edited=row.profile_last_edited or '',
+        sheet_json=row.sheet_json or '',
     )
 
 
@@ -609,6 +610,44 @@ class DBService:
                 pass
         except Exception:
             pass  # Webhook failures are non-fatal; don't break the player's save
+
+    # ── Character Sheet ───────────────────────────────────────────────────────
+
+    def save_sheet_json(self, character_name: str, sheet_json: str,
+                        discord_name: str) -> None:
+        """Store a Progeny character JSON export against this character.
+
+        Validates that the JSON is parseable and contains expected top-level keys.
+        Raises ValueError on malformed or unrecognised input.
+        """
+        try:
+            data = json.loads(sheet_json)
+        except (json.JSONDecodeError, TypeError, ValueError):
+            raise ValueError(
+                'Invalid JSON — paste the exported sheet data directly from Progeny.'
+            )
+
+        if not isinstance(data, dict) or 'attributes' not in data or 'skills' not in data:
+            raise ValueError(
+                'This does not look like a Progeny character sheet. '
+                'Export your character from Progeny (Export → Copy JSON) and paste the full JSON here.'
+            )
+
+        row = DbCharacter.query.filter(
+            func.lower(DbCharacter.character_name) == character_name.lower()
+        ).first()
+        if not row:
+            raise ValueError(f'Character not found: {character_name}')
+
+        row.sheet_json = sheet_json
+        db.session.commit()
+
+        self.log_action(
+            staff_user=f'player:{discord_name}',
+            action_type='player_sheet_import',
+            target=character_name,
+            details='Character sheet imported from Progeny',
+        )
 
     # ── Play Periods ──────────────────────────────────────────────────────────
 

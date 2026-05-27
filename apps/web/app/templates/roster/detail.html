@@ -248,6 +248,302 @@
     </div>
   </div>
 
+  <!-- ═══ Character Sheet (read-only staff view) ═══ -->
+  {# pip / damage-box macros — identical to player/character.html #}
+  {% macro pips(val, mx=5) -%}{%- set v = (val|int) if val is not none else 0 -%}{%- for i in range(mx) -%}<span class="ps-pip{% if i < v %} on{% endif %}"></span>{%- endfor -%}{%- endmacro %}
+  {% macro sqpips(val, mx=5) -%}{%- set v = (val|int) if val is not none else 0 -%}{%- for i in range(mx) -%}<span class="ps-sq{% if i < v %} on{% endif %}"></span>{%- endfor -%}{%- endmacro %}
+  {% macro dmgboxes(max_b, agg, sup, track) -%}{%- set mb=max_b|int -%}{%- set ag=agg|int -%}{%- set sp=sup|int -%}{%- for i in range(mb) -%}<span class="ps-dmg{% if i < ag %} agg{% elif i < (ag+sp) %} sup{% endif %}">{%- if i < ag %}✕{%- elif i < (ag+sp) %}/{%- endif -%}</span>{%- endfor -%}{%- endmacro %}
+  {% set _clan_colors = {
+    'brujah':'#c53030','gangrel':'#c05621','nosferatu':'#718096','malkavian':'#6b46c1',
+    'tremere':'#553c9a','ventrue':'#2b6cb0','toreador':'#b83280','lasombra':'#4a5568',
+    'banu haqim':'#00a3c4','the ministry':'#276749','ravnos':'#b7791f','tzimisce':'#285e41',
+    'hecata':'#4a5568','salubri':'#2c7a7b','caitiff':'#553c9a','thin-blood':'#718096',
+    'mortal':'#5a6a7a','ghoul':'#5a6a7a'
+  } %}
+  {% set _ck = ((sheet_data.get('clan') if sheet_data else '') or char.clan or '') | lower %}
+  {% set _cc = _clan_colors.get(_ck, '#8b1a1a') %}
+  <style>
+  .progeny-sheet{--ps-clan:#8b1a1a;--ps-panel:rgba(255,255,255,.04);--ps-border:rgba(255,255,255,.1);--ps-dim:rgba(255,255,255,.45);--ps-mono:'Courier New',Courier,monospace}
+  .ps-panel{background:var(--ps-panel);border:1px solid var(--ps-border);border-radius:6px;padding:.875rem 1rem;margin-bottom:.875rem}
+  .ps-sec-title{font-size:.6rem;text-transform:uppercase;letter-spacing:.2em;color:var(--ps-dim);padding-bottom:.35rem;margin-bottom:.7rem;border-bottom:1px solid var(--ps-border)}
+  .ps-col-head{font-size:.65rem;text-transform:uppercase;letter-spacing:.12em;color:var(--ps-clan);text-align:center;margin-bottom:.4rem;padding-bottom:.3rem;border-bottom:1px solid rgba(255,255,255,.07)}
+  .ps-row{display:flex;justify-content:space-between;align-items:center;padding:2px 5px;border-radius:4px;gap:6px;min-height:26px}
+  .ps-row:hover{background:rgba(255,255,255,.04)}.ps-row.dim{opacity:.38}
+  .ps-row-name{font-size:.75rem;font-family:var(--ps-mono);text-transform:uppercase;letter-spacing:.05em;flex-shrink:0;line-height:1.4}
+  .ps-spec{font-size:.6rem;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:3px;padding:1px 4px;color:rgba(255,255,255,.6);margin-left:3px;white-space:nowrap}
+  .ps-pips{display:inline-flex;align-items:center;gap:3px;flex-shrink:0;flex-wrap:wrap}
+  .ps-pip{width:18px;height:18px;border-radius:50%;border:2px solid var(--ps-clan);flex-shrink:0;transition:box-shadow .15s}
+  .ps-pip.on{background:var(--ps-clan);box-shadow:0 0 6px color-mix(in srgb,var(--ps-clan) 55%,transparent)}
+  .ps-sq{width:18px;height:18px;border-radius:3px;border:2px solid var(--ps-clan);flex-shrink:0}
+  .ps-sq.on{background:var(--ps-clan)}
+  .ps-dmg{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:3px;border:1.5px solid rgba(255,255,255,.25);flex-shrink:0;font-size:.75rem;line-height:1;user-select:none}
+  .ps-dmg.sup{border-color:#c8a84c;color:#c8a84c}
+  .ps-dmg.agg{border-color:#e05252;background:rgba(200,50,50,.18);color:#e05252}
+  .ps-disc-card{background:var(--ps-panel);border:1px solid var(--ps-border);border-radius:6px;overflow:hidden;height:100%}
+  .ps-disc-hdr{display:flex;align-items:center;gap:.45rem;padding:.55rem .75rem;border-bottom:1px solid var(--ps-border)}
+  .ps-disc-title{font-size:.82rem;font-weight:600;color:var(--ps-clan);flex:1;min-width:0}
+  .ps-disc-ct{width:18px;height:18px;border-radius:50%;background:var(--ps-clan);display:inline-flex;align-items:center;justify-content:center;font-size:.6rem;font-weight:700;color:#000;flex-shrink:0}
+  .ps-power{padding:.45rem .75rem;border-bottom:1px solid rgba(255,255,255,.04)}
+  .ps-power:last-child{border-bottom:none}
+  .ps-power-top{display:flex;align-items:baseline;gap:.4rem;flex-wrap:wrap}
+  .ps-lvl{font-size:.62rem;color:var(--ps-clan);font-weight:700;flex-shrink:0;white-space:nowrap}
+  .ps-power-name{font-size:.78rem;font-weight:600}
+  .ps-power-meta{font-size:.66rem;color:var(--ps-dim);font-style:italic}
+  .ps-power-summary{font-size:.7rem;color:rgba(255,255,255,.45);margin-top:2px;font-style:italic}
+  .ps-power-desc{font-size:.72rem;color:rgba(255,255,255,.58);margin-top:6px;border-top:1px solid rgba(255,255,255,.07);padding-top:6px;line-height:1.55}
+  .ps-bp-cell{padding:.4rem .5rem;background:var(--ps-panel);border:1px solid var(--ps-border);border-radius:5px;text-align:center}
+  .ps-bp-cell-lbl{font-size:.55rem;text-transform:uppercase;letter-spacing:.1em;color:var(--ps-dim);margin-bottom:2px}
+  .ps-bp-cell-val{font-size:.88rem;font-weight:700;color:var(--ps-clan)}
+  .ps-track-lbl{font-size:.65rem;text-transform:uppercase;letter-spacing:.1em;color:var(--ps-dim);margin-bottom:4px}
+  .ps-ts{background:var(--ps-panel);border:1px solid var(--ps-border);border-radius:6px;padding:.6rem .75rem}
+  .ps-ts-name{font-size:.82rem;font-weight:600}.ps-ts-desc{font-size:.72rem;color:var(--ps-dim);margin:.1rem 0}
+  .ps-ts-conv{font-size:.7rem;color:rgba(255,255,255,.42);font-style:italic}
+  .ps-mf{display:flex;justify-content:space-between;align-items:center;padding:3px 5px;border-radius:4px;gap:6px}
+  .ps-mf-name{font-size:.8rem}.ps-mf-summary{font-size:.68rem;color:var(--ps-dim);font-style:italic;padding:1px 5px 3px}
+  .ps-id-name{font-size:1.15rem;font-weight:700;line-height:1.2}
+  .ps-id-badge{font-size:.72rem;padding:.22em .55em;border-radius:4px;border:1px solid rgba(255,255,255,.2);display:inline-flex;align-items:center;gap:.3em}
+  </style>
+  <div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center"
+         data-bs-toggle="collapse" data-bs-target="#char-sheet-staff" role="button" style="cursor:pointer;">
+      <h5 class="mb-0">
+        <i class="bi bi-person-vcard"></i> Character Sheet
+        <i class="bi bi-chevron-down ms-2" style="font-size:0.8rem;"></i>
+      </h5>
+      {% if sheet_data %}
+      <small class="text-muted">Progeny import · read-only</small>
+      {% else %}
+      <small class="text-muted">Not imported</small>
+      {% endif %}
+    </div>
+    <div class="collapse" id="char-sheet-staff">
+      <div class="card-body p-2 p-md-3">
+      {% if sheet_data %}
+      {% set _bp_tbl = {
+        0:  {'surge':'1 die',  'bane_sev':'—', 'power_bonus':'—',  'mend':'1 Rouse','reroll':'—',       'feeding':'—'},
+        1:  {'surge':'1 die',  'bane_sev':'2', 'power_bonus':'—',  'mend':'1 Rouse','reroll':'Hunger 4','feeding':'No animal/syn'},
+        2:  {'surge':'2 dice', 'bane_sev':'2', 'power_bonus':'—',  'mend':'1 Rouse','reroll':'Hunger 3','feeding':'No animal/syn'},
+        3:  {'surge':'3 dice', 'bane_sev':'3', 'power_bonus':'+1', 'mend':'1 Rouse','reroll':'Hunger 3','feeding':'No bagged'},
+        4:  {'surge':'3 dice', 'bane_sev':'3', 'power_bonus':'+1', 'mend':'1 Rouse','reroll':'Hunger 2','feeding':'No bagged'},
+        5:  {'surge':'4 dice', 'bane_sev':'3', 'power_bonus':'+2', 'mend':'Free',   'reroll':'Hunger 2','feeding':'Mortal w/ Willpower'},
+        6:  {'surge':'4 dice', 'bane_sev':'4', 'power_bonus':'+2', 'mend':'Free',   'reroll':'Hunger 1','feeding':'Mortal w/ Willpower'},
+        7:  {'surge':'5 dice', 'bane_sev':'4', 'power_bonus':'+3', 'mend':'Free',   'reroll':'Hunger 1','feeding':'Resonance required'},
+        8:  {'surge':'5 dice', 'bane_sev':'5', 'power_bonus':'+3', 'mend':'Free',   'reroll':'Any',     'feeding':'Resonance required'},
+        9:  {'surge':'6 dice', 'bane_sev':'5', 'power_bonus':'+4', 'mend':'Free',   'reroll':'Any',     'feeding':'Powerful resonance'},
+        10: {'surge':'6 dice', 'bane_sev':'5', 'power_bonus':'+4', 'mend':'Free',   'reroll':'Any',     'feeding':'Kindred only'}
+      } %}
+      {% set eph       = sheet_data.get('ephemeral', {}) %}
+      {% set attrs     = sheet_data.get('attributes', {}) %}
+      {% set skills_map = sheet_data.get('skills', {}) %}
+      {% set bp_val    = sheet_data.get('bloodPotency', 0) | int %}
+      {% set _bprow    = _bp_tbl.get(bp_val, _bp_tbl[0]) %}
+      {% set max_hp    = sheet_data.get('maxHealth',  0) | int %}
+      {% set max_wp    = sheet_data.get('willpower',  0) | int %}
+      {% set agg_hp    = eph.get('aggravatedDamage', 0) | int %}
+      {% set sup_hp    = eph.get('superficialDamage', 0) | int %}
+      {% set agg_wp    = eph.get('aggravatedWillpowerDamage', 0) | int %}
+      {% set sup_wp    = eph.get('superficialWillpowerDamage', 0) | int %}
+      {% set humanity  = sheet_data.get('humanity', 0) | int %}
+      {% set hunger    = eph.get('hunger', 0) | int %}
+      {% set stains    = eph.get('humanityStains', 0) | int %}
+
+      <div class="progeny-sheet" style="--ps-clan:{{ _cc }}">
+
+      {# ════════ 1. IDENTITY ════════ #}
+      <div class="ps-panel">
+        <div class="ps-sec-title">Identity</div>
+        <div class="d-flex align-items-center gap-3 mb-2 flex-wrap">
+          {% set _cs = (sheet_data.get('clan') or '') | lower | replace(' ', '-') %}
+          {% if _cs %}<img src="{{ url_for('static', filename='images/symbols/' + _cs + '.png') }}" style="width:38px;height:38px;object-fit:contain;opacity:.85;flex-shrink:0" onerror="this.style.display='none'" aria-hidden="true">{% endif %}
+          <div class="flex-grow-1" style="min-width:0">
+            <div class="ps-id-name" style="color:var(--ps-clan)">{{ sheet_data.get('name') or char.character_name }}</div>
+            <div class="d-flex flex-wrap gap-1 mt-1">
+              {% if sheet_data.get('clan') %}<span class="ps-id-badge"><i class="bi bi-moon-stars" style="font-size:.6rem"></i> {{ sheet_data.clan }}</span>{% endif %}
+              {% if sheet_data.get('generation') %}<span class="ps-id-badge">{{ sheet_data.generation }}th Gen</span>{% endif %}
+              {% if sheet_data.get('sect') %}<span class="ps-id-badge">{{ sheet_data.sect }}</span>{% endif %}
+              {% if sheet_data.get('predatorType') %}<span class="ps-id-badge" title="Predator Type"><i class="bi bi-droplet" style="font-size:.6rem"></i> {{ sheet_data.predatorType }}</span>{% endif %}
+            </div>
+          </div>
+        </div>
+        {% if sheet_data.get('sire') or sheet_data.get('ambition') or sheet_data.get('desire') %}
+        <div class="d-flex flex-wrap gap-3 mt-1" style="font-size:.72rem;color:var(--ps-dim)">
+          {% if sheet_data.get('sire') %}<span><span style="color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.06em;font-size:.6rem">Sire </span>{{ sheet_data.sire }}</span>{% endif %}
+          {% if sheet_data.get('ambition') %}<span><span style="color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.06em;font-size:.6rem">Ambition </span>{{ sheet_data.ambition }}</span>{% endif %}
+          {% if sheet_data.get('desire') %}<span><span style="color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.06em;font-size:.6rem">Desire </span>{{ sheet_data.desire }}</span>{% endif %}
+        </div>
+        {% endif %}
+      </div>
+
+      {# ════════ 2. ATTRIBUTES ════════ #}
+      <div class="ps-panel">
+        <div class="ps-sec-title">Attributes</div>
+        <div class="row g-2">
+          {% for grp, grp_keys in [('Physical',['strength','dexterity','stamina']),('Social',['charisma','manipulation','composure']),('Mental',['intelligence','wits','resolve'])] %}
+          <div class="col-12 col-md-4">
+            <div class="ps-col-head">{{ grp }}</div>
+            {% for attr in grp_keys %}
+            <div class="ps-row"><span class="ps-row-name">{{ attr | title }}</span><span class="ps-pips">{{ pips(attrs.get(attr, 0)) }}</span></div>
+            {% endfor %}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      {# ════════ 3. SKILLS ════════ #}
+      {% set phys_skills = ['athletics','brawl','craft','drive','firearms','melee','larceny','stealth','survival'] %}
+      {% set soc_skills  = ['animal ken','etiquette','insight','intimidation','leadership','performance','persuasion','streetwise','subterfuge'] %}
+      {% set ment_skills = ['academics','awareness','finance','investigation','medicine','occult','politics','science','technology'] %}
+      <div class="ps-panel">
+        <div class="ps-sec-title">Skills</div>
+        <div class="row g-2">
+          {% for grp, grp_skills in [('Physical', phys_skills), ('Social', soc_skills), ('Mental', ment_skills)] %}
+          <div class="col-12 col-md-4">
+            <div class="ps-col-head">{{ grp }}</div>
+            {% for sk in grp_skills %}
+            {% set sk_val = skills_map.get(sk, 0) | int %}
+            {% set sk_specs = sheet_ctx.get('specialties', {}).get(sk, []) %}
+            <div class="ps-row{% if sk_val == 0 %} dim{% endif %}">
+              <span class="ps-row-name">{{ sk | title }}{% for sp in sk_specs %}<span class="ps-spec">{{ sp }}</span>{% endfor %}</span>
+              <span class="ps-pips">{{ pips(sk_val) }}</span>
+            </div>
+            {% endfor %}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      {# ════════ 4. DISCIPLINES ════════ #}
+      {% set disc_groups = sheet_ctx.get('disciplines_grouped', {}) %}
+      {% if disc_groups %}
+      <div class="ps-panel">
+        <div class="ps-sec-title">Disciplines</div>
+        <div class="row g-2">
+          {% for disc_name, powers in disc_groups.items() %}
+          <div class="col-12 col-sm-6 col-lg-4">
+            <div class="ps-disc-card">
+              <div class="ps-disc-hdr"><span class="ps-disc-title">{{ disc_name }}</span><span class="ps-disc-ct">{{ powers | length }}</span></div>
+              {% for power in powers %}
+              <div class="ps-power">
+                <div class="ps-power-top"><span class="ps-lvl">●{{ power.get('level','?') }}</span><span class="ps-power-name">{{ power.get('name','') }}</span></div>
+                {% set _pm = [] %}{% if power.get('rouseChecks') %}{% set _pm = _pm + ['Rouse '+(power.rouseChecks|string)] %}{% endif %}{% if power.get('dicePool') %}{% set _pm = _pm + [power.dicePool] %}{% endif %}
+                {% if _pm %}<div class="ps-power-meta">{{ _pm | join(' · ') }}</div>{% endif %}
+                {% if power.get('summary') %}<div class="ps-power-summary">{{ power.summary }}</div>{% endif %}
+                {% if power.get('description') %}<div class="ps-power-desc">{{ power.description }}</div>{% endif %}
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      {# ════════ 5. RITUALS & CEREMONIES ════════ #}
+      {% set ritual_groups   = sheet_ctx.get('rituals_grouped', {}) %}
+      {% set ceremony_groups = sheet_ctx.get('ceremonies_grouped', {}) %}
+      {% if ritual_groups or ceremony_groups %}
+      <div class="ps-panel">
+        <div class="ps-sec-title">Rituals &amp; Ceremonies</div>
+        <div class="row g-2">
+          {% for lbl, grps in [('Ritual', ritual_groups), ('Ceremony', ceremony_groups)] %}
+          {% for disc_name, rites in grps.items() %}
+          <div class="col-12 col-sm-6 col-lg-4">
+            <div class="ps-disc-card">
+              <div class="ps-disc-hdr"><span class="ps-disc-title">{{ disc_name }} {{ lbl }}s</span><span class="ps-disc-ct">{{ rites | length }}</span></div>
+              {% for rite in rites %}
+              <div class="ps-power">
+                <div class="ps-power-top"><span class="ps-lvl">●{{ rite.get('level','?') }}</span><span class="ps-power-name">{{ rite.get('name','') }}</span></div>
+                {% set _rm = [] %}{% if rite.get('rouseChecks') %}{% set _rm = _rm + ['Rouse '+(rite.rouseChecks|string)] %}{% endif %}{% if rite.get('requiredTime') %}{% set _rm = _rm + [rite.requiredTime] %}{% endif %}
+                {% if _rm %}<div class="ps-power-meta">{{ _rm | join(' · ') }}</div>{% endif %}
+                {% if rite.get('summary') %}<div class="ps-power-summary">{{ rite.summary }}</div>{% endif %}
+                {% if rite.get('description') %}<div class="ps-power-desc">{{ rite.description }}</div>{% endif %}
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          {% endfor %}
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      {# ════════ 6. VITAL STATS ════════ #}
+      <div class="ps-panel">
+        <div class="ps-sec-title">Vital Stats</div>
+        <div class="row g-3">
+          {% if max_hp > 0 %}<div class="col-12 col-sm-6"><div class="ps-track-lbl">Health</div><div class="ps-pips" style="gap:3px;flex-wrap:wrap">{{ dmgboxes(max_hp, agg_hp, sup_hp, 'hp') }}</div></div>{% endif %}
+          {% if max_wp > 0 %}<div class="col-12 col-sm-6"><div class="ps-track-lbl">Willpower</div><div class="ps-pips" style="gap:3px;flex-wrap:wrap">{{ dmgboxes(max_wp, agg_wp, sup_wp, 'wp') }}</div></div>{% endif %}
+          <div class="col-12 col-sm-6">
+            <div class="ps-track-lbl">Humanity{% if stains > 0 %} <span style="color:#c8a84c;font-size:.6rem">({{ stains }} stain{{ 's' if stains != 1 }})</span>{% endif %}</div>
+            <div class="ps-pips" style="gap:3px;flex-wrap:wrap">{{ sqpips(humanity, 10) }}</div>
+          </div>
+          <div class="col-12 col-sm-6">
+            <div class="ps-track-lbl">Hunger</div>
+            <div class="ps-pips" style="gap:3px;flex-wrap:wrap">
+              {% for i in range(5) %}<span class="ps-sq{% if i < hunger %} on{% endif %}" style="{% if i < hunger %}background:#c53030;border-color:#c53030{% else %}border-color:#c53030{% endif %}"></span>{% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {# ════════ 7. THE BLOOD ════════ #}
+      <div class="ps-panel">
+        <div class="ps-sec-title">The Blood</div>
+        <div class="mb-3"><div class="ps-track-lbl">Blood Potency</div><div class="ps-pips" style="gap:3px;flex-wrap:wrap">{{ pips(bp_val, 10) }}</div></div>
+        <div class="row g-2">
+          <div class="col-6 col-md-4 col-xl-2"><div class="ps-bp-cell"><div class="ps-bp-cell-lbl">Blood Surge</div><div class="ps-bp-cell-val">{{ _bprow.surge }}</div></div></div>
+          <div class="col-6 col-md-4 col-xl-2"><div class="ps-bp-cell"><div class="ps-bp-cell-lbl">Bane Severity</div><div class="ps-bp-cell-val">{{ _bprow.bane_sev }}</div></div></div>
+          <div class="col-6 col-md-4 col-xl-2"><div class="ps-bp-cell"><div class="ps-bp-cell-lbl">Power Bonus</div><div class="ps-bp-cell-val">{{ _bprow.power_bonus }}</div></div></div>
+          <div class="col-6 col-md-4 col-xl-2"><div class="ps-bp-cell"><div class="ps-bp-cell-lbl">Mend Sup.</div><div class="ps-bp-cell-val">{{ _bprow.mend }}</div></div></div>
+          <div class="col-6 col-md-4 col-xl-2"><div class="ps-bp-cell"><div class="ps-bp-cell-lbl">Reroll Hunger</div><div class="ps-bp-cell-val">{{ _bprow.reroll }}</div></div></div>
+          <div class="col-6 col-md-4 col-xl-2"><div class="ps-bp-cell"><div class="ps-bp-cell-lbl">Feeding</div><div class="ps-bp-cell-val" style="font-size:.68rem;line-height:1.3">{{ _bprow.feeding }}</div></div></div>
+        </div>
+      </div>
+
+      {# ════════ 8. TOUCHSTONES ════════ #}
+      {% set touchstones = sheet_data.get('touchstones', []) %}
+      {% if touchstones %}
+      <div class="ps-panel">
+        <div class="ps-sec-title">Touchstones &amp; Convictions</div>
+        <div class="row g-2">
+          {% for ts in touchstones %}{% if ts.get('name') or ts.get('conviction') %}
+          <div class="col-12 col-sm-6"><div class="ps-ts">
+            {% if ts.get('name') %}<div class="ps-ts-name">{{ ts.name }}</div>{% endif %}
+            {% if ts.get('conviction') %}<div class="ps-ts-conv">"{{ ts.conviction }}"</div>{% endif %}
+            {% if ts.get('description') %}<div class="ps-ts-desc">{{ ts.description }}</div>{% endif %}
+          </div></div>
+          {% endif %}{% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      {# ════════ 9. MERITS & FLAWS ════════ #}
+      {% set merits = sheet_data.get('merits', []) %}
+      {% set flaws  = sheet_data.get('flaws',  []) %}
+      {% if merits or flaws %}
+      <div class="ps-panel">
+        <div class="ps-sec-title">Advantages &amp; Flaws</div>
+        <div class="row g-2">
+          {% if merits %}<div class="col-12 col-md-6">
+            <div class="ps-col-head" style="color:rgba(200,220,200,.6)">Advantages</div>
+            {% for m in merits %}<div class="ps-mf"><span class="ps-mf-name">{{ m.get('name','') }}</span><span class="ps-pips">{{ pips(m.get('level',0)) }}</span></div>{% if m.get('summary') %}<div class="ps-mf-summary">{{ m.summary }}</div>{% endif %}{% endfor %}
+          </div>{% endif %}
+          {% if flaws %}<div class="col-12 col-md-6">
+            <div class="ps-col-head" style="color:rgba(220,100,100,.6)">Flaws</div>
+            {% for f in flaws %}<div class="ps-mf"><span class="ps-mf-name" style="color:#e08080">{{ f.get('name','') }}</span><span class="ps-pips">{{ pips(f.get('level',0)) }}</span></div>{% if f.get('summary') %}<div class="ps-mf-summary">{{ f.summary }}</div>{% endif %}{% endfor %}
+          </div>{% endif %}
+        </div>
+      </div>
+      {% endif %}
+
+      </div>{# /progeny-sheet #}
+      {% else %}
+      <p class="text-muted small mb-0 py-2">No character sheet imported yet. The player can import from Progeny on their character page.</p>
+      {% endif %}
+      </div>
+    </div>
+  </div>
+
   <!-- ═══ Spend History ═══ -->
   <div class="card mb-4">
     <div class="card-header">
