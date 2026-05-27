@@ -439,6 +439,217 @@ def import_sheet(name):
     return redirect(url_for('player.character', name=name))
 
 
+@bp.route('/<name>/sheet/edit', methods=['GET', 'POST'])
+@require_character_owner
+def edit_sheet(name):
+    """Native character sheet editor — full form-based entry."""
+    char = db_service.get_character(name)
+    if not char or not char.active:
+        abort(404)
+
+    if request.method == 'POST':
+        discord_name = session.get('discord_name', 'unknown')
+        try:
+            sheet_json = _build_sheet_json_from_form(request.form)
+            db_service.save_sheet_native(name, sheet_json, discord_name)
+            flash('Character sheet saved.', 'success')
+        except ValueError as e:
+            flash(str(e), 'danger')
+        return redirect(url_for('player.character', name=name) + '#char-sheet')
+
+    # GET — parse existing data for pre-population
+    sheet_data: dict = {}
+    if char.sheet_json:
+        try:
+            sheet_data = _json.loads(char.sheet_json)
+        except (ValueError, TypeError):
+            sheet_data = {}
+
+    return render_template('player/sheet_editor.html', char=char, sheet_data=sheet_data)
+
+
+def _build_sheet_json_from_form(form) -> str:
+    """Assemble a Progeny-compatible sheet JSON dict from a POST form."""
+
+    def _int(key: str, default: int = 0) -> int:
+        try:
+            return max(0, int(form.get(key, default) or default))
+        except (ValueError, TypeError):
+            return default
+
+    def _str(key: str, default: str = '') -> str:
+        return str(form.get(key, default) or '').strip()
+
+    data: dict = {
+        'name':         _str('name'),
+        'clan':         _str('clan'),
+        'generation':   _int('generation', 13),
+        'sect':         _str('sect'),
+        'predatorType': _str('predatorType'),
+        'sire':         _str('sire'),
+        'ambition':     _str('ambition'),
+        'desire':       _str('desire'),
+        'bloodPotency': _int('bloodPotency', 0),
+        'humanity':     _int('humanity', 7),
+        'maxHealth':    _int('maxHealth', 4),
+        'willpower':    _int('willpower', 3),
+        'attributes': {
+            'strength':     max(1, _int('attr_strength',     1)),
+            'dexterity':    max(1, _int('attr_dexterity',    1)),
+            'stamina':      max(1, _int('attr_stamina',      1)),
+            'charisma':     max(1, _int('attr_charisma',     1)),
+            'manipulation': max(1, _int('attr_manipulation', 1)),
+            'composure':    max(1, _int('attr_composure',    1)),
+            'intelligence': max(1, _int('attr_intelligence', 1)),
+            'wits':         max(1, _int('attr_wits',         1)),
+            'resolve':      max(1, _int('attr_resolve',      1)),
+        },
+        'skills': {
+            'athletics':    _int('skill_athletics',     0),
+            'brawl':        _int('skill_brawl',         0),
+            'craft':        _int('skill_craft',         0),
+            'drive':        _int('skill_drive',         0),
+            'firearms':     _int('skill_firearms',      0),
+            'melee':        _int('skill_melee',         0),
+            'larceny':      _int('skill_larceny',       0),
+            'stealth':      _int('skill_stealth',       0),
+            'survival':     _int('skill_survival',      0),
+            'animal ken':   _int('skill_animal_ken',    0),
+            'etiquette':    _int('skill_etiquette',     0),
+            'insight':      _int('skill_insight',       0),
+            'intimidation': _int('skill_intimidation',  0),
+            'leadership':   _int('skill_leadership',    0),
+            'performance':  _int('skill_performance',   0),
+            'persuasion':   _int('skill_persuasion',    0),
+            'streetwise':   _int('skill_streetwise',    0),
+            'subterfuge':   _int('skill_subterfuge',    0),
+            'academics':    _int('skill_academics',     0),
+            'awareness':    _int('skill_awareness',     0),
+            'finance':      _int('skill_finance',       0),
+            'investigation':_int('skill_investigation', 0),
+            'medicine':     _int('skill_medicine',      0),
+            'occult':       _int('skill_occult',        0),
+            'politics':     _int('skill_politics',      0),
+            'science':      _int('skill_science',       0),
+            'technology':   _int('skill_technology',    0),
+        },
+    }
+
+    # Skill specialties — parallel lists spec_skill[] / spec_name[]
+    specs = []
+    for skill, spec in zip(form.getlist('spec_skill'), form.getlist('spec_name')):
+        skill = (skill or '').strip()
+        spec = (spec or '').strip()
+        if skill and spec:
+            specs.append({'skill': skill, 'specialty': spec})
+    data['skillSpecialties'] = specs
+
+    # Disciplines — flat power list, server groups by discipline name
+    disc_disciplines = form.getlist('disc_discipline')
+    disc_names       = form.getlist('disc_name')
+    disc_levels      = form.getlist('disc_level')
+    disc_dice        = form.getlist('disc_dice_pool')
+    disc_rouse       = form.getlist('disc_rouse')
+    disc_summaries   = form.getlist('disc_summary')
+    disc_descs       = form.getlist('disc_desc')
+
+    disciplines = []
+    for i, pname in enumerate(disc_names):
+        pname = (pname or '').strip()
+        if not pname:
+            continue
+        try:
+            lvl = max(1, min(5, int(disc_levels[i]))) if i < len(disc_levels) else 1
+        except (ValueError, TypeError):
+            lvl = 1
+        try:
+            rouse = max(0, min(3, int(disc_rouse[i]))) if i < len(disc_rouse) else 0
+        except (ValueError, TypeError):
+            rouse = 0
+        disciplines.append({
+            'name':                 pname,
+            'discipline':           (disc_disciplines[i].strip() if i < len(disc_disciplines) else ''),
+            'level':                lvl,
+            'dicePool':             (disc_dice[i].strip()      if i < len(disc_dice)      else ''),
+            'rouseChecks':          rouse,
+            'summary':              (disc_summaries[i].strip() if i < len(disc_summaries) else ''),
+            'description':          (disc_descs[i].strip()     if i < len(disc_descs)     else ''),
+            'amalgamPrerequisites': [],
+        })
+    data['disciplines'] = disciplines
+    data['rituals']     = []
+    data['ceremonies']  = []
+
+    # Touchstones
+    ts_names       = form.getlist('ts_name')
+    ts_convictions = form.getlist('ts_conviction')
+    ts_descs       = form.getlist('ts_desc')
+    touchstones = []
+    for i, n in enumerate(ts_names):
+        n = (n or '').strip()
+        if not n:
+            continue
+        touchstones.append({
+            'name':        n,
+            'conviction':  (ts_convictions[i].strip() if i < len(ts_convictions) else ''),
+            'description': (ts_descs[i].strip()       if i < len(ts_descs)       else ''),
+        })
+    data['touchstones'] = touchstones
+
+    # Merits
+    merit_names    = form.getlist('merit_name')
+    merit_levels   = form.getlist('merit_level')
+    merit_summaries= form.getlist('merit_summary')
+    merits = []
+    for i, n in enumerate(merit_names):
+        n = (n or '').strip()
+        if not n:
+            continue
+        try:
+            lvl = max(1, min(5, int(merit_levels[i]))) if i < len(merit_levels) else 1
+        except (ValueError, TypeError):
+            lvl = 1
+        merits.append({
+            'name':    n,
+            'level':   lvl,
+            'summary': (merit_summaries[i].strip() if i < len(merit_summaries) else ''),
+        })
+    data['merits'] = merits
+
+    # Flaws
+    flaw_names    = form.getlist('flaw_name')
+    flaw_levels   = form.getlist('flaw_level')
+    flaw_summaries= form.getlist('flaw_summary')
+    flaws = []
+    for i, n in enumerate(flaw_names):
+        n = (n or '').strip()
+        if not n:
+            continue
+        try:
+            lvl = max(1, min(5, int(flaw_levels[i]))) if i < len(flaw_levels) else 1
+        except (ValueError, TypeError):
+            lvl = 1
+        flaws.append({
+            'name':    n,
+            'level':   lvl,
+            'summary': (flaw_summaries[i].strip() if i < len(flaw_summaries) else ''),
+        })
+    data['flaws'] = flaws
+
+    # Ephemeral state
+    data['ephemeral'] = {
+        'hunger':                     _int('hunger',                     1),
+        'superficialDamage':          _int('superficialDamage',          0),
+        'aggravatedDamage':           _int('aggravatedDamage',           0),
+        'superficialWillpowerDamage': _int('superficialWillpowerDamage', 0),
+        'aggravatedWillpowerDamage':  _int('aggravatedWillpowerDamage',  0),
+        'humanityStains':             _int('humanityStains',             0),
+        'experienceSpent':            _int('experienceSpent',            0),
+    }
+
+    return _json.dumps(data)
+
+
 @bp.route('/<name>/spend', methods=['POST'])
 @require_character_owner
 def submit_spend(name):

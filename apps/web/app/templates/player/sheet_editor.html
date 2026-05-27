@@ -1,0 +1,652 @@
+{% extends "player/base.html" %}
+{% block title %}Edit Sheet — {{ char.character_name }}{% endblock %}
+
+{% block content %}
+{# ── Clan colour ── #}
+{% set _clan_colors = {
+  'brujah':'#c53030','gangrel':'#c05621','nosferatu':'#718096','malkavian':'#6b46c1',
+  'tremere':'#553c9a','ventrue':'#2b6cb0','toreador':'#b83280','lasombra':'#4a5568',
+  'banu haqim':'#00a3c4','the ministry':'#276749','ravnos':'#b7791f','tzimisce':'#285e41',
+  'hecata':'#4a5568','salubri':'#2c7a7b','caitiff':'#553c9a','thin-blood':'#718096',
+  'mortal':'#5a6a7a','ghoul':'#5a6a7a'
+} %}
+{% set _ck = (sheet_data.get('clan') or char.clan or '') | lower %}
+{% set _cc = _clan_colors.get(_ck, '#8b1a1a') %}
+
+{# ── Dot-picker macros ── #}
+{% macro attr_row(label, field, raw_val) %}
+{%- set _rv = (raw_val | default(1)) | int %}
+{%- set v = _rv if _rv >= 1 else 1 %}
+<div class="se-row">
+  <span class="se-label">{{ label }}</span>
+  <div class="dp" data-min="1" data-max="5">
+    {%- for i in range(1, 6) -%}
+    <span class="dp-pip{% if i <= v %} on{% endif %}" data-v="{{ i }}"></span>
+    {%- endfor -%}
+  </div>
+  <input type="hidden" name="{{ field }}" class="dp-val" value="{{ v }}">
+</div>
+{% endmacro %}
+
+{% macro skill_row(label, field, raw_val) %}
+{%- set _rv = (raw_val | default(0)) | int %}
+{%- set v = _rv if _rv >= 0 else 0 %}
+<div class="se-row">
+  <span class="se-label">{{ label }}</span>
+  <div class="dp" data-min="0" data-max="5">
+    {%- for i in range(1, 6) -%}
+    <span class="dp-pip{% if i <= v %} on{% endif %}" data-v="{{ i }}"></span>
+    {%- endfor -%}
+  </div>
+  <input type="hidden" name="{{ field }}" class="dp-val" value="{{ v }}">
+</div>
+{% endmacro %}
+
+<style>
+:root{--se-clan:{{ _cc }}}
+.se-panel{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:.875rem 1rem;margin-bottom:.875rem}
+.se-title{font-size:.6rem;text-transform:uppercase;letter-spacing:.2em;color:rgba(255,255,255,.45);padding-bottom:.3rem;margin-bottom:.7rem;border-bottom:1px solid rgba(255,255,255,.1)}
+.se-col-head{font-size:.65rem;text-transform:uppercase;letter-spacing:.12em;color:var(--se-clan);text-align:center;margin-bottom:.4rem;padding-bottom:.3rem;border-bottom:1px solid rgba(255,255,255,.07)}
+.se-row{display:flex;justify-content:space-between;align-items:center;padding:3px 5px;border-radius:4px;min-height:30px;gap:6px}
+.se-row:hover{background:rgba(255,255,255,.04)}
+.se-label{font-size:.75rem;font-family:'Courier New',Courier,monospace;text-transform:uppercase;letter-spacing:.05em;flex:1;min-width:0;line-height:1.4}
+.dp{display:inline-flex;gap:3px;align-items:center;flex-shrink:0}
+.dp-pip{width:20px;height:20px;border-radius:50%;border:2px solid var(--se-clan);flex-shrink:0;cursor:pointer;transition:background .12s,box-shadow .12s}
+.dp-pip:hover{background:rgba(var(--se-clan-rgb,.5,.1,.1),.25)}
+.dp-pip.on{background:var(--se-clan);box-shadow:0 0 5px color-mix(in srgb,var(--se-clan) 50%,transparent)}
+.se-disc-row{background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.08);border-radius:6px;padding:.65rem .75rem;margin-bottom:.5rem}
+.se-dyn-row{background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.08);border-radius:6px;padding:.65rem .75rem;margin-bottom:.5rem}
+.se-rm{width:24px;height:24px;border:1px solid rgba(255,80,80,.35);border-radius:4px;background:transparent;color:rgba(255,80,80,.55);font-size:.9rem;line-height:1;cursor:pointer;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;transition:background .1s,color .1s;padding:0}
+.se-rm:hover{background:rgba(255,80,80,.15);color:#e06060}
+</style>
+
+<form method="POST" action="{{ url_for('player.edit_sheet', name=char.character_name) }}" id="sheet-editor-form">
+
+<!-- Page header -->
+<div class="d-flex justify-content-between align-items-center mb-3 gap-2 flex-wrap">
+    <div>
+        <h2 class="mb-0" style="font-family:'Cinzel',serif;color:var(--se-clan);line-height:1.1">{{ char.character_name }}</h2>
+        <small class="text-muted">Edit Character Sheet</small>
+    </div>
+    <div class="d-flex gap-2 flex-shrink-0">
+        <a href="{{ url_for('player.character', name=char.character_name) }}"
+           class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-x-lg"></i> Cancel
+        </a>
+        <button type="submit" class="btn btn-sm btn-danger">
+            <i class="bi bi-floppy"></i> Save Sheet
+        </button>
+    </div>
+</div>
+
+<!-- Tab navigation -->
+<ul class="nav nav-tabs mb-3" id="sheetTabs" role="tablist" style="flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch">
+    <li class="nav-item flex-shrink-0" role="presentation">
+        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-identity" type="button">Identity</button>
+    </li>
+    <li class="nav-item flex-shrink-0" role="presentation">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-attrs" type="button">Attributes</button>
+    </li>
+    <li class="nav-item flex-shrink-0" role="presentation">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-skills" type="button">Skills</button>
+    </li>
+    <li class="nav-item flex-shrink-0" role="presentation">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-discs" type="button">Disciplines</button>
+    </li>
+    <li class="nav-item flex-shrink-0" role="presentation">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-blood" type="button">Blood &amp; Vitals</button>
+    </li>
+    <li class="nav-item flex-shrink-0" role="presentation">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-ts" type="button">Touchstones</button>
+    </li>
+    <li class="nav-item flex-shrink-0" role="presentation">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-mf" type="button">Merits &amp; Flaws</button>
+    </li>
+</ul>
+
+<div class="tab-content" id="sheetTabContent">
+
+{# ════════════════════════════════════════════════
+   TAB 1 — IDENTITY
+════════════════════════════════════════════════ #}
+<div class="tab-pane fade show active" id="tab-identity" role="tabpanel">
+<div class="se-panel">
+    <div class="se-title">Identity</div>
+    <div class="row g-3">
+        <div class="col-12 col-md-6">
+            <label class="form-label small fw-bold">Character Name</label>
+            <input type="text" class="form-control form-control-sm" name="name"
+                   value="{{ sheet_data.get('name') or char.character_name }}" maxlength="100">
+        </div>
+        <div class="col-12 col-md-6">
+            <label class="form-label small fw-bold">Clan</label>
+            {% set _clan_opts = ['Banu Haqim','Brujah','Caitiff','Gangrel','Hecata','Lasombra',
+                                  'Malkavian','Ministry','Nosferatu','Ravnos','Salubri',
+                                  'The Ministry','Thin-Blood','Toreador','Tremere','Tzimisce','Ventrue'] %}
+            <select class="form-select form-select-sm" name="clan">
+                <option value="">— Select —</option>
+                {% for _c in _clan_opts %}
+                <option value="{{ _c }}"
+                    {% if (sheet_data.get('clan') or char.clan or '') == _c %}selected{% endif %}>{{ _c }}</option>
+                {% endfor %}
+                {# fallback for clans not in the hard list (e.g. custom/legacy) #}
+                {% if sheet_data.get('clan') and sheet_data.get('clan') not in _clan_opts %}
+                <option value="{{ sheet_data.clan }}" selected>{{ sheet_data.clan }}</option>
+                {% endif %}
+            </select>
+        </div>
+        <div class="col-6 col-md-3">
+            <label class="form-label small fw-bold">Generation</label>
+            <input type="number" class="form-control form-control-sm" name="generation"
+                   min="4" max="16" value="{{ sheet_data.get('generation', 13) }}">
+        </div>
+        <div class="col-6 col-md-3">
+            <label class="form-label small fw-bold">Sect</label>
+            <select class="form-select form-select-sm" name="sect">
+                <option value="">— None —</option>
+                {% for _s in ['Camarilla','Anarch','Sabbat','Unaligned','Inconnu'] %}
+                <option value="{{ _s }}" {% if sheet_data.get('sect') == _s %}selected{% endif %}>{{ _s }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-12 col-md-6">
+            <label class="form-label small fw-bold">Predator Type</label>
+            <input type="text" class="form-control form-control-sm" name="predatorType"
+                   value="{{ sheet_data.get('predatorType', '') }}" maxlength="80"
+                   placeholder="e.g., Alleycat, Bagger, Blood Leech…">
+        </div>
+        <div class="col-12 col-md-6">
+            <label class="form-label small fw-bold">Sire</label>
+            <input type="text" class="form-control form-control-sm" name="sire"
+                   value="{{ sheet_data.get('sire', '') }}" maxlength="100"
+                   placeholder="Sire's name">
+        </div>
+        <div class="col-12 col-md-6">
+            <label class="form-label small fw-bold">Ambition
+                <span class="text-muted fw-normal" style="font-size:.7rem">— long-term goal</span></label>
+            <input type="text" class="form-control form-control-sm" name="ambition"
+                   value="{{ sheet_data.get('ambition', '') }}" maxlength="200"
+                   placeholder="The thing they're always working toward">
+        </div>
+        <div class="col-12 col-md-6">
+            <label class="form-label small fw-bold">Desire
+                <span class="text-muted fw-normal" style="font-size:.7rem">— short-term want</span></label>
+            <input type="text" class="form-control form-control-sm" name="desire"
+                   value="{{ sheet_data.get('desire', '') }}" maxlength="200"
+                   placeholder="What they want right now">
+        </div>
+    </div>
+</div>
+</div>
+
+{# ════════════════════════════════════════════════
+   TAB 2 — ATTRIBUTES
+════════════════════════════════════════════════ #}
+<div class="tab-pane fade" id="tab-attrs" role="tabpanel">
+<div class="se-panel">
+    <div class="se-title">Attributes
+        <span class="text-muted fw-normal" style="font-size:.55rem;letter-spacing:0;text-transform:none">— click pips to set (min 1)</span>
+    </div>
+    {% set _a = sheet_data.get('attributes', {}) %}
+    <div class="row g-3">
+        <div class="col-12 col-md-4">
+            <div class="se-col-head">Physical</div>
+            {{ attr_row('Strength',    'attr_strength',    _a.get('strength',    1)) }}
+            {{ attr_row('Dexterity',   'attr_dexterity',   _a.get('dexterity',   1)) }}
+            {{ attr_row('Stamina',     'attr_stamina',     _a.get('stamina',     1)) }}
+        </div>
+        <div class="col-12 col-md-4">
+            <div class="se-col-head">Social</div>
+            {{ attr_row('Charisma',    'attr_charisma',    _a.get('charisma',    1)) }}
+            {{ attr_row('Manipulation','attr_manipulation',_a.get('manipulation',1)) }}
+            {{ attr_row('Composure',   'attr_composure',   _a.get('composure',   1)) }}
+        </div>
+        <div class="col-12 col-md-4">
+            <div class="se-col-head">Mental</div>
+            {{ attr_row('Intelligence','attr_intelligence',_a.get('intelligence',1)) }}
+            {{ attr_row('Wits',        'attr_wits',        _a.get('wits',        1)) }}
+            {{ attr_row('Resolve',     'attr_resolve',     _a.get('resolve',     1)) }}
+        </div>
+    </div>
+</div>
+</div>
+
+{# ════════════════════════════════════════════════
+   TAB 3 — SKILLS
+════════════════════════════════════════════════ #}
+<div class="tab-pane fade" id="tab-skills" role="tabpanel">
+<div class="se-panel">
+    <div class="se-title">Skills
+        <span class="text-muted fw-normal" style="font-size:.55rem;letter-spacing:0;text-transform:none">— click pips (0 = untrained)</span>
+    </div>
+    {% set _sk = sheet_data.get('skills', {}) %}
+    <div class="row g-3">
+        <div class="col-12 col-md-4">
+            <div class="se-col-head">Physical</div>
+            {{ skill_row('Athletics', 'skill_athletics',  _sk.get('athletics',  0)) }}
+            {{ skill_row('Brawl',     'skill_brawl',      _sk.get('brawl',      0)) }}
+            {{ skill_row('Craft',     'skill_craft',      _sk.get('craft',      0)) }}
+            {{ skill_row('Drive',     'skill_drive',      _sk.get('drive',      0)) }}
+            {{ skill_row('Firearms',  'skill_firearms',   _sk.get('firearms',   0)) }}
+            {{ skill_row('Melee',     'skill_melee',      _sk.get('melee',      0)) }}
+            {{ skill_row('Larceny',   'skill_larceny',    _sk.get('larceny',    0)) }}
+            {{ skill_row('Stealth',   'skill_stealth',    _sk.get('stealth',    0)) }}
+            {{ skill_row('Survival',  'skill_survival',   _sk.get('survival',   0)) }}
+        </div>
+        <div class="col-12 col-md-4">
+            <div class="se-col-head">Social</div>
+            {{ skill_row('Animal Ken',  'skill_animal_ken',  _sk.get('animal ken',  0)) }}
+            {{ skill_row('Etiquette',   'skill_etiquette',   _sk.get('etiquette',   0)) }}
+            {{ skill_row('Insight',     'skill_insight',     _sk.get('insight',     0)) }}
+            {{ skill_row('Intimidation','skill_intimidation',_sk.get('intimidation',0)) }}
+            {{ skill_row('Leadership',  'skill_leadership',  _sk.get('leadership',  0)) }}
+            {{ skill_row('Performance', 'skill_performance', _sk.get('performance', 0)) }}
+            {{ skill_row('Persuasion',  'skill_persuasion',  _sk.get('persuasion',  0)) }}
+            {{ skill_row('Streetwise',  'skill_streetwise',  _sk.get('streetwise',  0)) }}
+            {{ skill_row('Subterfuge',  'skill_subterfuge',  _sk.get('subterfuge',  0)) }}
+        </div>
+        <div class="col-12 col-md-4">
+            <div class="se-col-head">Mental</div>
+            {{ skill_row('Academics',    'skill_academics',    _sk.get('academics',    0)) }}
+            {{ skill_row('Awareness',    'skill_awareness',    _sk.get('awareness',    0)) }}
+            {{ skill_row('Finance',      'skill_finance',      _sk.get('finance',      0)) }}
+            {{ skill_row('Investigation','skill_investigation',_sk.get('investigation',0)) }}
+            {{ skill_row('Medicine',     'skill_medicine',     _sk.get('medicine',     0)) }}
+            {{ skill_row('Occult',       'skill_occult',       _sk.get('occult',       0)) }}
+            {{ skill_row('Politics',     'skill_politics',     _sk.get('politics',     0)) }}
+            {{ skill_row('Science',      'skill_science',      _sk.get('science',      0)) }}
+            {{ skill_row('Technology',   'skill_technology',   _sk.get('technology',   0)) }}
+        </div>
+    </div>
+</div>
+<!-- Skill Specialties -->
+<div class="se-panel">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <div class="se-title mb-0">Skill Specialties</div>
+        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="seAddSpec()">
+            <i class="bi bi-plus"></i> Add Specialty
+        </button>
+    </div>
+    <p class="text-muted small mb-2" style="font-size:.72rem">Add one specialty per row. Each costs 3 XP via the Spend Request form.</p>
+    <div id="spec-list">
+        {% for _sp in sheet_data.get('skillSpecialties', []) %}
+        {% if _sp.get('specialty') %}
+        <div class="se-dyn-row d-flex align-items-center gap-2 mb-2">
+            <select class="form-select form-select-sm" name="spec_skill" style="max-width:160px">
+                {% for _sn in ['athletics','brawl','craft','drive','firearms','melee','larceny','stealth','survival',
+                               'animal ken','etiquette','insight','intimidation','leadership','performance','persuasion','streetwise','subterfuge',
+                               'academics','awareness','finance','investigation','medicine','occult','politics','science','technology'] %}
+                <option value="{{ _sn }}" {% if _sp.get('skill') == _sn %}selected{% endif %}>{{ _sn | title }}</option>
+                {% endfor %}
+            </select>
+            <input type="text" class="form-control form-control-sm" name="spec_name"
+                   value="{{ _sp.get('specialty', '') }}" placeholder="e.g., Parkour, Kindred History">
+            <button type="button" class="se-rm" onclick="this.closest('.se-dyn-row').remove()">×</button>
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+</div>
+</div>
+
+{# ════════════════════════════════════════════════
+   TAB 4 — DISCIPLINES
+════════════════════════════════════════════════ #}
+<div class="tab-pane fade" id="tab-discs" role="tabpanel">
+<div class="se-panel">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <div class="se-title mb-0">Discipline Powers</div>
+        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="seAddDisc()">
+            <i class="bi bi-plus"></i> Add Power
+        </button>
+    </div>
+    <p class="text-muted small mb-3" style="font-size:.72rem">Add each power individually. Enter the same Discipline name across multiple rows — the sheet display will group them automatically.</p>
+    <div id="disc-list">
+        {% for _p in sheet_data.get('disciplines', []) %}
+        <div class="se-disc-row">
+            <div class="d-flex gap-2 mb-2 flex-wrap align-items-start">
+                <input type="text" class="form-control form-control-sm" name="disc_discipline"
+                       value="{{ _p.get('discipline', '') }}" placeholder="Discipline (e.g. Fortitude)"
+                       style="flex:2;min-width:130px">
+                <input type="text" class="form-control form-control-sm" name="disc_name"
+                       value="{{ _p.get('name', '') }}" placeholder="Power Name"
+                       style="flex:3;min-width:150px">
+                <div class="d-flex align-items-center gap-1 flex-shrink-0">
+                    <span class="text-muted" style="font-size:.7rem">Lvl</span>
+                    <input type="number" class="form-control form-control-sm" name="disc_level"
+                           value="{{ _p.get('level', 1) }}" min="1" max="5" style="width:54px">
+                </div>
+                <button type="button" class="se-rm ms-auto flex-shrink-0"
+                        onclick="this.closest('.se-disc-row').remove()">×</button>
+            </div>
+            <div class="d-flex gap-2 mb-2 flex-wrap">
+                <input type="text" class="form-control form-control-sm" name="disc_dice_pool"
+                       value="{{ _p.get('dicePool', '') }}" placeholder="Dice Pool (e.g. Strength + Athletics vs 3)"
+                       style="flex:3;min-width:190px">
+                <div class="d-flex align-items-center gap-1 flex-shrink-0">
+                    <span class="text-muted" style="font-size:.7rem">Rouse</span>
+                    <input type="number" class="form-control form-control-sm" name="disc_rouse"
+                           value="{{ _p.get('rouseChecks', 0) }}" min="0" max="3" style="width:54px">
+                </div>
+            </div>
+            <input type="text" class="form-control form-control-sm mb-2" name="disc_summary"
+                   value="{{ _p.get('summary', '') }}" placeholder="Short summary (shown collapsed)">
+            <textarea class="form-control form-control-sm" name="disc_desc" rows="2"
+                      placeholder="Full description (click to expand on sheet)…" style="font-size:.78rem">{{ _p.get('description', '') }}</textarea>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+</div>
+
+{# ════════════════════════════════════════════════
+   TAB 5 — BLOOD & VITALS
+════════════════════════════════════════════════ #}
+<div class="tab-pane fade" id="tab-blood" role="tabpanel">
+{% set _eph = sheet_data.get('ephemeral', {}) %}
+<div class="se-panel">
+    <div class="se-title">Blood &amp; Humanity</div>
+    <div class="row g-3">
+        <div class="col-6 col-md-3">
+            <label class="form-label small fw-bold">Blood Potency</label>
+            <input type="number" class="form-control form-control-sm" name="bloodPotency"
+                   min="0" max="10" value="{{ sheet_data.get('bloodPotency', 0) }}">
+        </div>
+        <div class="col-6 col-md-3">
+            <label class="form-label small fw-bold">Humanity</label>
+            <input type="number" class="form-control form-control-sm" name="humanity"
+                   min="0" max="10" value="{{ sheet_data.get('humanity', 7) }}">
+        </div>
+        <div class="col-6 col-md-3">
+            <label class="form-label small fw-bold">Hunger</label>
+            <input type="number" class="form-control form-control-sm" name="hunger"
+                   min="0" max="5" value="{{ _eph.get('hunger', 1) }}">
+            <div class="form-text" style="font-size:.62rem">Current session value</div>
+        </div>
+        <div class="col-6 col-md-3">
+            <label class="form-label small fw-bold">Humanity Stains</label>
+            <input type="number" class="form-control form-control-sm" name="humanityStains"
+                   min="0" max="10" value="{{ _eph.get('humanityStains', 0) }}">
+        </div>
+    </div>
+</div>
+<div class="se-panel">
+    <div class="se-title">Health Track</div>
+    <div class="row g-3">
+        <div class="col-6 col-md-4">
+            <label class="form-label small fw-bold">Max Health</label>
+            <input type="number" class="form-control form-control-sm" name="maxHealth"
+                   min="1" max="20" value="{{ sheet_data.get('maxHealth', 4) }}">
+            <div class="form-text" style="font-size:.62rem">Typically Stamina + 3</div>
+        </div>
+        <div class="col-6 col-md-4">
+            <label class="form-label small fw-bold">Aggravated HP Damage</label>
+            <input type="number" class="form-control form-control-sm" name="aggravatedDamage"
+                   min="0" max="20" value="{{ _eph.get('aggravatedDamage', 0) }}">
+        </div>
+        <div class="col-6 col-md-4">
+            <label class="form-label small fw-bold">Superficial HP Damage</label>
+            <input type="number" class="form-control form-control-sm" name="superficialDamage"
+                   min="0" max="20" value="{{ _eph.get('superficialDamage', 0) }}">
+        </div>
+    </div>
+</div>
+<div class="se-panel">
+    <div class="se-title">Willpower Track</div>
+    <div class="row g-3">
+        <div class="col-6 col-md-4">
+            <label class="form-label small fw-bold">Max Willpower</label>
+            <input type="number" class="form-control form-control-sm" name="willpower"
+                   min="1" max="20" value="{{ sheet_data.get('willpower', 3) }}">
+            <div class="form-text" style="font-size:.62rem">Typically Composure + Resolve</div>
+        </div>
+        <div class="col-6 col-md-4">
+            <label class="form-label small fw-bold">Aggravated WP Damage</label>
+            <input type="number" class="form-control form-control-sm" name="aggravatedWillpowerDamage"
+                   min="0" max="20" value="{{ _eph.get('aggravatedWillpowerDamage', 0) }}">
+        </div>
+        <div class="col-6 col-md-4">
+            <label class="form-label small fw-bold">Superficial WP Damage</label>
+            <input type="number" class="form-control form-control-sm" name="superficialWillpowerDamage"
+                   min="0" max="20" value="{{ _eph.get('superficialWillpowerDamage', 0) }}">
+        </div>
+    </div>
+</div>
+</div>
+
+{# ════════════════════════════════════════════════
+   TAB 6 — TOUCHSTONES
+════════════════════════════════════════════════ #}
+<div class="tab-pane fade" id="tab-ts" role="tabpanel">
+<div class="se-panel">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <div class="se-title mb-0">Touchstones &amp; Convictions</div>
+        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="seAddTS()">
+            <i class="bi bi-plus"></i> Add Touchstone
+        </button>
+    </div>
+    <p class="text-muted small mb-3" style="font-size:.72rem">A Touchstone is a person, place, or belief that anchors your character's Humanity. Each has a Conviction — a principle your character holds.</p>
+    <div id="ts-list">
+        {% for _ts in sheet_data.get('touchstones', []) %}
+        {% if _ts.get('name') %}
+        <div class="se-dyn-row mb-2">
+            <div class="d-flex gap-2 mb-2 align-items-start">
+                <input type="text" class="form-control form-control-sm" name="ts_name"
+                       value="{{ _ts.get('name', '') }}" placeholder="Touchstone name / description">
+                <button type="button" class="se-rm mt-1 flex-shrink-0"
+                        onclick="this.closest('.se-dyn-row').remove()">×</button>
+            </div>
+            <input type="text" class="form-control form-control-sm mb-2" name="ts_conviction"
+                   value="{{ _ts.get('conviction', '') }}" placeholder="Conviction (e.g. &quot;I will protect the innocent&quot;)">
+            <textarea class="form-control form-control-sm" name="ts_desc" rows="2"
+                      placeholder="Optional notes…" style="font-size:.78rem">{{ _ts.get('description', '') }}</textarea>
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+</div>
+</div>
+
+{# ════════════════════════════════════════════════
+   TAB 7 — MERITS & FLAWS
+════════════════════════════════════════════════ #}
+<div class="tab-pane fade" id="tab-mf" role="tabpanel">
+<div class="row g-3">
+    <div class="col-12 col-md-6">
+        <div class="se-panel h-100">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <div class="se-title mb-0">Advantages &amp; Merits</div>
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="seAddMerit()">
+                    <i class="bi bi-plus"></i> Add
+                </button>
+            </div>
+            <div id="merit-list">
+                {% for _m in sheet_data.get('merits', []) %}
+                <div class="se-dyn-row mb-2">
+                    <div class="d-flex gap-2 mb-2 align-items-center">
+                        <input type="text" class="form-control form-control-sm" name="merit_name"
+                               value="{{ _m.get('name', '') }}" placeholder="Merit / Advantage name">
+                        <input type="number" class="form-control form-control-sm" name="merit_level"
+                               value="{{ _m.get('level', 1) }}" min="1" max="5" style="width:60px">
+                        <button type="button" class="se-rm flex-shrink-0"
+                                onclick="this.closest('.se-dyn-row').remove()">×</button>
+                    </div>
+                    <input type="text" class="form-control form-control-sm" name="merit_summary"
+                           value="{{ _m.get('summary', '') }}" placeholder="Short note…">
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-6">
+        <div class="se-panel h-100">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <div class="se-title mb-0" style="color:rgba(220,100,100,.6)">Flaws &amp; Loresheets</div>
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="seAddFlaw()">
+                    <i class="bi bi-plus"></i> Add
+                </button>
+            </div>
+            <div id="flaw-list">
+                {% for _f in sheet_data.get('flaws', []) %}
+                <div class="se-dyn-row mb-2" style="border-color:rgba(200,60,60,.18)">
+                    <div class="d-flex gap-2 mb-2 align-items-center">
+                        <input type="text" class="form-control form-control-sm" name="flaw_name"
+                               value="{{ _f.get('name', '') }}" placeholder="Flaw name"
+                               style="color:#e08080">
+                        <input type="number" class="form-control form-control-sm" name="flaw_level"
+                               value="{{ _f.get('level', 1) }}" min="1" max="5" style="width:60px">
+                        <button type="button" class="se-rm flex-shrink-0"
+                                onclick="this.closest('.se-dyn-row').remove()">×</button>
+                    </div>
+                    <input type="text" class="form-control form-control-sm" name="flaw_summary"
+                           value="{{ _f.get('summary', '') }}" placeholder="Short note…">
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+
+</div>{# /tab-content #}
+
+<!-- Bottom save bar -->
+<div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+    <a href="{{ url_for('player.character', name=char.character_name) }}"
+       class="btn btn-outline-secondary">
+        <i class="bi bi-x-lg"></i> Cancel
+    </a>
+    <button type="submit" class="btn btn-danger">
+        <i class="bi bi-floppy"></i> Save Sheet
+    </button>
+</div>
+
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    // ── Dot pickers ──────────────────────────────────────────────────────────
+    function initDP(dp) {
+        var inp = dp.parentElement.querySelector('.dp-val');
+        if (!inp) return;
+        var minV = parseInt(dp.dataset.min) || 0;
+        var pips = dp.querySelectorAll('.dp-pip');
+
+        function render(val) {
+            pips.forEach(function (pip) {
+                pip.classList.toggle('on', parseInt(pip.dataset.v) <= val);
+            });
+        }
+
+        render(parseInt(inp.value) || minV);
+
+        pips.forEach(function (pip) {
+            pip.addEventListener('click', function () {
+                var clicked = parseInt(pip.dataset.v);
+                var cur     = parseInt(inp.value) || minV;
+                // Clicking the active pip decrements (with floor at minV)
+                var next = (clicked === cur) ? Math.max(minV, clicked - 1) : clicked;
+                inp.value = next;
+                render(next);
+            });
+        });
+    }
+
+    document.querySelectorAll('.dp').forEach(initDP);
+
+    // ── Skill list for specialty dropdown ───────────────────────────────────
+    var _SKILLS = [
+        'athletics','brawl','craft','drive','firearms','melee','larceny','stealth','survival',
+        'animal ken','etiquette','insight','intimidation','leadership','performance',
+        'persuasion','streetwise','subterfuge',
+        'academics','awareness','finance','investigation','medicine','occult',
+        'politics','science','technology'
+    ];
+    function _skillOpts(selected) {
+        return _SKILLS.map(function (s) {
+            var lbl = s.replace(/\b\w/g, function (c) { return c.toUpperCase(); });
+            return '<option value="' + s + '"' + (s === selected ? ' selected' : '') + '>' + lbl + '</option>';
+        }).join('');
+    }
+
+    // ── Add specialty row ────────────────────────────────────────────────────
+    window.seAddSpec = function () {
+        var row = document.createElement('div');
+        row.className = 'se-dyn-row d-flex align-items-center gap-2 mb-2';
+        row.innerHTML =
+            '<select class="form-select form-select-sm" name="spec_skill" style="max-width:160px">'
+            + _skillOpts('') + '</select>'
+            + '<input type="text" class="form-control form-control-sm" name="spec_name" placeholder="e.g., Parkour, Kindred History">'
+            + '<button type="button" class="se-rm" onclick="this.closest(\'.se-dyn-row\').remove()">×</button>';
+        document.getElementById('spec-list').appendChild(row);
+    };
+
+    // ── Add discipline power row ─────────────────────────────────────────────
+    window.seAddDisc = function () {
+        var row = document.createElement('div');
+        row.className = 'se-disc-row';
+        row.innerHTML =
+            '<div class="d-flex gap-2 mb-2 flex-wrap align-items-start">'
+            + '<input type="text" class="form-control form-control-sm" name="disc_discipline" placeholder="Discipline (e.g. Fortitude)" style="flex:2;min-width:130px">'
+            + '<input type="text" class="form-control form-control-sm" name="disc_name" placeholder="Power Name" style="flex:3;min-width:150px">'
+            + '<div class="d-flex align-items-center gap-1 flex-shrink-0"><span class="text-muted" style="font-size:.7rem">Lvl</span><input type="number" class="form-control form-control-sm" name="disc_level" value="1" min="1" max="5" style="width:54px"></div>'
+            + '<button type="button" class="se-rm ms-auto flex-shrink-0" onclick="this.closest(\'.se-disc-row\').remove()">×</button>'
+            + '</div>'
+            + '<div class="d-flex gap-2 mb-2 flex-wrap">'
+            + '<input type="text" class="form-control form-control-sm" name="disc_dice_pool" placeholder="Dice Pool (e.g. Strength + Athletics vs 3)" style="flex:3;min-width:190px">'
+            + '<div class="d-flex align-items-center gap-1 flex-shrink-0"><span class="text-muted" style="font-size:.7rem">Rouse</span><input type="number" class="form-control form-control-sm" name="disc_rouse" value="0" min="0" max="3" style="width:54px"></div>'
+            + '</div>'
+            + '<input type="text" class="form-control form-control-sm mb-2" name="disc_summary" placeholder="Short summary (shown collapsed)">'
+            + '<textarea class="form-control form-control-sm" name="disc_desc" rows="2" placeholder="Full description (click to expand on sheet)…" style="font-size:.78rem"></textarea>';
+        document.getElementById('disc-list').appendChild(row);
+    };
+
+    // ── Add touchstone row ───────────────────────────────────────────────────
+    window.seAddTS = function () {
+        var row = document.createElement('div');
+        row.className = 'se-dyn-row mb-2';
+        row.innerHTML =
+            '<div class="d-flex gap-2 mb-2 align-items-start">'
+            + '<input type="text" class="form-control form-control-sm" name="ts_name" placeholder="Touchstone name / description">'
+            + '<button type="button" class="se-rm mt-1 flex-shrink-0" onclick="this.closest(\'.se-dyn-row\').remove()">×</button>'
+            + '</div>'
+            + '<input type="text" class="form-control form-control-sm mb-2" name="ts_conviction" placeholder="Conviction — &quot;I will protect…&quot;">'
+            + '<textarea class="form-control form-control-sm" name="ts_desc" rows="2" placeholder="Optional notes…" style="font-size:.78rem"></textarea>';
+        document.getElementById('ts-list').appendChild(row);
+    };
+
+    // ── Add merit row ────────────────────────────────────────────────────────
+    window.seAddMerit = function () {
+        var row = document.createElement('div');
+        row.className = 'se-dyn-row mb-2';
+        row.innerHTML =
+            '<div class="d-flex gap-2 mb-2 align-items-center">'
+            + '<input type="text" class="form-control form-control-sm" name="merit_name" placeholder="Merit / Advantage name">'
+            + '<input type="number" class="form-control form-control-sm" name="merit_level" value="1" min="1" max="5" style="width:60px">'
+            + '<button type="button" class="se-rm flex-shrink-0" onclick="this.closest(\'.se-dyn-row\').remove()">×</button>'
+            + '</div>'
+            + '<input type="text" class="form-control form-control-sm" name="merit_summary" placeholder="Short note…">';
+        document.getElementById('merit-list').appendChild(row);
+    };
+
+    // ── Add flaw row ─────────────────────────────────────────────────────────
+    window.seAddFlaw = function () {
+        var row = document.createElement('div');
+        row.className = 'se-dyn-row mb-2';
+        row.style.borderColor = 'rgba(200,60,60,.18)';
+        row.innerHTML =
+            '<div class="d-flex gap-2 mb-2 align-items-center">'
+            + '<input type="text" class="form-control form-control-sm" name="flaw_name" placeholder="Flaw name" style="color:#e08080">'
+            + '<input type="number" class="form-control form-control-sm" name="flaw_level" value="1" min="1" max="5" style="width:60px">'
+            + '<button type="button" class="se-rm flex-shrink-0" onclick="this.closest(\'.se-dyn-row\').remove()">×</button>'
+            + '</div>'
+            + '<input type="text" class="form-control form-control-sm" name="flaw_summary" placeholder="Short note…">';
+        document.getElementById('flaw-list').appendChild(row);
+    };
+
+});
+</script>
+{% endblock %}

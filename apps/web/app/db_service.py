@@ -649,6 +649,38 @@ class DBService:
             details='Character sheet imported from Progeny',
         )
 
+    def save_sheet_native(self, character_name: str, sheet_json: str,
+                          discord_name: str) -> None:
+        """Store a natively-edited character sheet JSON.
+
+        Accepts pre-assembled JSON from the native sheet editor form.
+        Validates structure and saves to sheet_json column.
+        Raises ValueError on malformed input.
+        """
+        try:
+            data = json.loads(sheet_json)
+        except (json.JSONDecodeError, TypeError, ValueError):
+            raise ValueError('Sheet data is malformed — please try again.')
+
+        if not isinstance(data, dict) or 'attributes' not in data or 'skills' not in data:
+            raise ValueError('Sheet data is incomplete — please try again.')
+
+        row = DbCharacter.query.filter(
+            func.lower(DbCharacter.character_name) == character_name.lower()
+        ).first()
+        if not row:
+            raise ValueError(f'Character not found: {character_name}')
+
+        row.sheet_json = sheet_json
+        db.session.commit()
+
+        self.log_action(
+            staff_user=f'player:{discord_name}',
+            action_type='player_sheet_edit',
+            target=character_name,
+            details='Character sheet edited natively',
+        )
+
     # ── Play Periods ──────────────────────────────────────────────────────────
 
     def get_all_periods(self) -> list[PlayPeriod]:
