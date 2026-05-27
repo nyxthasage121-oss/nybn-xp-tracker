@@ -6,16 +6,37 @@ from loguru import logger
 from services.dashboard import DashboardError, create_character
 
 # ---------------------------------------------------------------------------
-# Approval message template
-# Update this string with your server's actual approval message.
+# Approval message template — NYbN character approval message.
 # Available variables: {character_name}, {player_mention}, {clan}, {sect}
 # ---------------------------------------------------------------------------
 APPROVAL_MESSAGE = """\
-{player_mention} Congratulations! Your character **{character_name}** has been approved! 🩸
+{player_mention}
 
-Please go ahead and input your character sheet in Enoch using `/character create`, then post your profile in the profiles channel.
+<:Complete:1230869334843330600> Attributes
+<:Complete:1230869334843330600> Skills
+<:Complete:1230869334843330600> Predator Type
+<:Complete:1230869334843330600> Disciplines
+<:Complete:1230869334843330600> Character Thresholds (Health, Humanity, Willpower and Blood Potency)
+<:Complete:1230869334843330600> Merits/Flaws
+<:Complete:1230869334843330600> Convictions & Tenets
+<:Complete:1230869334843330600> XP Spend
+<:Complete:1230869334843330600> Backstory
 
-Welcome to New York by Night!
+# {character_name} — Character Approved
+
+**Welcome to NYBN!**
+
+If you want you can create your character profile in: https://discord.com/channels/1201856861108707348/1202154508239503360
+
+And you can put your character in Enoch now in here: https://discord.com/channels/1201856861108707348/1201861978230886430
+
+There is alot of helpful information about house rules and server ettiquette here https://discord.com/channels/1201856861108707348/1238725819702968380 and here https://discord.com/channels/1201856861108707348/1238640428731990086
+
+After that you can look for RP scenes here: https://discord.com/channels/1201856861108707348/1201861096177422356
+
+You can also search for rumors here: https://discord.com/channels/1201856861108707348/1201861330483814463
+
+If you need help with anything just let me know!
 """
 
 
