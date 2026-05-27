@@ -1126,6 +1126,26 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
 
+    // ═══ Hash deep-link auto-expand (from dashboard portal links) ═══
+    (function() {
+        var hashMap = {
+            'ic-profile':  'ic-profile',
+            'char-sheet':  'char-sheet',
+            'claim-form':  'claim-form',
+            'spend-form':  'spend-form',
+            'wish-list':   'wish-list',
+        };
+        var hash = window.location.hash.replace('#', '');
+        var collapseId = hashMap[hash];
+        if (!collapseId) return;
+        var el = document.getElementById(collapseId);
+        if (!el) return;
+        bootstrap.Collapse.getOrCreateInstance(el).show();
+        setTimeout(function() {
+            el.closest('.card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 120);
+    })();
+
     // ═══ Bottom nav — expand + scroll ═══
     function expandAndScroll(collapseId) {
         const el = document.getElementById(collapseId);
