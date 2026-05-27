@@ -36,6 +36,16 @@ class DbCharacter(db.Model):
     ingrained_discipline_name = db.Column(String(50), default='')  # which Discipline
     ingrained_discipline_xp_used = db.Column(Integer, default=0)   # running total, max 15
 
+    # IC Profile (player-editable RP fields)
+    profile_pronouns = db.Column(String(50), default='')
+    profile_concept = db.Column(String(200), default='')
+    profile_epitaph = db.Column(String(200), default='')
+    profile_apparent_age = db.Column(String(100), default='')
+    profile_appearance = db.Column(Text, default='')
+    profile_biography = db.Column(Text, default='')
+    profile_locked = db.Column(Boolean, default=False)        # staff can lock to prevent edits
+    profile_last_edited = db.Column(String(20), default='')
+
 
 class DbPlayPeriod(db.Model):
     __tablename__ = 'play_periods'
@@ -66,6 +76,7 @@ class DbChronicleSettings(db.Model):
     has_midnight = db.Column(Boolean, default=True)
     xp_frequency = db.Column(String(20), default='weekly')  # 'weekly' | 'biweekly'
     notes = db.Column(Text, default='')
+    profile_webhook_url = db.Column(String(500), default='')  # Discord webhook for profile edits
 
 
 class DbCriteria(db.Model):

@@ -344,6 +344,34 @@ def sites():
     )
 
 
+@bp.route('/<name>/profile', methods=['POST'])
+@require_character_owner
+def save_profile(name):
+    """Save player-editable IC profile fields."""
+    char = db_service.get_character(name)
+    if not char or not char.active:
+        abort(404)
+
+    discord_name = session.get('discord_name', 'unknown')
+
+    fields = {
+        'profile_pronouns':     request.form.get('pronouns', ''),
+        'profile_concept':      request.form.get('concept', ''),
+        'profile_epitaph':      request.form.get('epitaph', ''),
+        'profile_apparent_age': request.form.get('apparent_age', ''),
+        'profile_appearance':   request.form.get('appearance', ''),
+        'profile_biography':    request.form.get('biography', ''),
+    }
+
+    try:
+        db_service.save_character_profile(name, fields, discord_name)
+        flash('IC Profile saved successfully.', 'success')
+    except ValueError as e:
+        flash(str(e), 'danger')
+
+    return redirect(url_for('player.character', name=name))
+
+
 @bp.route('/<name>/spend', methods=['POST'])
 @require_character_owner
 def submit_spend(name):

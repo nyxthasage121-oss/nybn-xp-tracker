@@ -104,6 +104,14 @@
         </button>
       </form>
       {% endif %}
+      <form method="POST" action="{{ url_for('roster.toggle_profile_lock', name=char.character_name) }}" class="d-inline">
+        <button type="submit" class="btn btn-sm {% if char.profile_locked %}btn-outline-success{% else %}btn-outline-secondary{% endif %}"
+                data-confirm="{% if char.profile_locked %}Unlock IC profile for {{ char.character_name }}? They will be able to edit it again.{% else %}Lock IC profile for {{ char.character_name }}? They will not be able to edit it until unlocked.{% endif %}"
+                title="{% if char.profile_locked %}Unlock IC profile{% else %}Lock IC profile{% endif %}">
+          <i class="bi bi-{% if char.profile_locked %}unlock{% else %}lock{% endif %}"></i>
+          {% if char.profile_locked %}Unlock Profile{% else %}Lock Profile{% endif %}
+        </button>
+      </form>
     </div>
   </div>
 
@@ -185,6 +193,57 @@
           <p class="text-muted mb-0 small">No pending claims or spends.</p>
           {% endif %}
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ IC Profile ═══ -->
+  {% set has_profile = char.profile_pronouns or char.profile_concept or char.profile_epitaph or char.profile_apparent_age or char.profile_appearance or char.profile_biography %}
+  <div class="card mb-4 {% if char.profile_locked %}border-secondary{% endif %}">
+    <div class="card-header d-flex justify-content-between align-items-center"
+         data-bs-toggle="collapse" data-bs-target="#ic-profile-staff" role="button" style="cursor:pointer;">
+      <h5 class="mb-0">
+        <i class="bi bi-person-badge"></i> IC Profile
+        {% if char.profile_locked %}<span class="badge bg-secondary ms-2" style="font-size:0.7rem;"><i class="bi bi-lock-fill"></i> Locked</span>{% endif %}
+      </h5>
+      {% if char.profile_last_edited %}
+      <small class="text-muted">Last edited {{ char.profile_last_edited }}</small>
+      {% elif not has_profile %}
+      <small class="text-muted">No profile yet</small>
+      {% endif %}
+    </div>
+    <div class="collapse {% if has_profile %}show{% endif %}" id="ic-profile-staff">
+      <div class="card-body">
+        {% if has_profile %}
+        <dl class="row mb-0">
+          {% if char.profile_pronouns %}
+          <dt class="col-sm-3 text-muted small">Pronouns</dt>
+          <dd class="col-sm-9">{{ char.profile_pronouns }}</dd>
+          {% endif %}
+          {% if char.profile_concept %}
+          <dt class="col-sm-3 text-muted small">Concept</dt>
+          <dd class="col-sm-9">{{ char.profile_concept }}</dd>
+          {% endif %}
+          {% if char.profile_epitaph %}
+          <dt class="col-sm-3 text-muted small">Epitaph</dt>
+          <dd class="col-sm-9"><em>{{ char.profile_epitaph }}</em></dd>
+          {% endif %}
+          {% if char.profile_apparent_age %}
+          <dt class="col-sm-3 text-muted small">Apparent Age</dt>
+          <dd class="col-sm-9">{{ char.profile_apparent_age }}</dd>
+          {% endif %}
+          {% if char.profile_appearance %}
+          <dt class="col-sm-3 text-muted small">Appearance</dt>
+          <dd class="col-sm-9" style="white-space:pre-wrap;">{{ char.profile_appearance }}</dd>
+          {% endif %}
+          {% if char.profile_biography %}
+          <dt class="col-sm-3 text-muted small">Biography</dt>
+          <dd class="col-sm-9" style="white-space:pre-wrap;">{{ char.profile_biography }}</dd>
+          {% endif %}
+        </dl>
+        {% else %}
+        <p class="text-muted mb-0 small">Player has not filled out their IC profile yet.</p>
+        {% endif %}
       </div>
     </div>
   </div>

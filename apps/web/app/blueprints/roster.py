@@ -630,6 +630,30 @@ def unretire(name):
     return redirect(url_for('roster.detail', name=name))
 
 
+@bp.route('/<name>/profile_lock', methods=['POST'])
+@require_staff
+def toggle_profile_lock(name):
+    """Lock or unlock a character's IC profile so players cannot edit it."""
+    char = db_service.get_character(name)
+    if not char:
+        abort(404)
+
+    new_locked = not char.profile_locked
+    db_service.update_character(name, {'profile_locked': new_locked})
+
+    staff = get_staff_user()
+    label = 'locked' if new_locked else 'unlocked'
+    db_service.log_action(
+        staff_user=staff,
+        action_type='profile_lock' if new_locked else 'profile_unlock',
+        target=name,
+        details=f'IC profile {label} for {name}',
+    )
+
+    flash(f'IC profile {label} for {name}.', 'warning' if new_locked else 'success')
+    return redirect(url_for('roster.detail', name=name))
+
+
 @bp.route('/<name>/delete', methods=['POST'])
 @require_staff
 def delete(name):

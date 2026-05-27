@@ -110,6 +110,94 @@
 </div>
 {% endif %}
 
+<!-- ═══ IC Profile ═══ -->
+<div class="card mb-4" id="ic-profile-card">
+    <div class="card-header d-flex justify-content-between align-items-center"
+         data-bs-toggle="collapse" data-bs-target="#ic-profile" role="button" style="cursor:pointer;">
+        <h5 class="mb-0">
+            <i class="bi bi-person-badge"></i> IC Profile
+            <i class="bi bi-chevron-down ms-2" style="font-size:0.8rem;"></i>
+        </h5>
+        {% if char.profile_locked %}
+        <span class="badge bg-secondary ms-2"><i class="bi bi-lock-fill"></i> Locked by staff</span>
+        {% elif char.profile_last_edited %}
+        <small class="text-muted d-none d-sm-inline">Last saved {{ char.profile_last_edited }}</small>
+        {% endif %}
+    </div>
+    <div class="collapse" id="ic-profile">
+        <div class="card-body">
+            {% if char.profile_locked %}
+            <div class="alert alert-secondary py-2 mb-3">
+                <i class="bi bi-lock"></i> This profile has been locked by staff and cannot be edited.
+                Contact a Storyteller if you need to make changes.
+            </div>
+            {% endif %}
+            <form method="POST" action="{{ url_for('player.save_profile', name=char.character_name) }}">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small">Pronouns</label>
+                        <input type="text" class="form-control" name="pronouns" maxlength="50"
+                               value="{{ char.profile_pronouns }}"
+                               placeholder="e.g., she/her, he/him, they/them"
+                               {% if char.profile_locked %}disabled{% endif %}>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small">Concept</label>
+                        <input type="text" class="form-control" name="concept" maxlength="200"
+                               value="{{ char.profile_concept }}"
+                               placeholder="e.g., Fallen socialite, Reluctant predator"
+                               {% if char.profile_locked %}disabled{% endif %}>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-bold small">Epitaph
+                            <span class="text-muted fw-normal">— a short tagline or quote</span>
+                        </label>
+                        <input type="text" class="form-control" name="epitaph" maxlength="200"
+                               value="{{ char.profile_epitaph }}"
+                               placeholder="The line that defines them..."
+                               {% if char.profile_locked %}disabled{% endif %}>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small">Apparent Age</label>
+                        <input type="text" class="form-control" name="apparent_age" maxlength="100"
+                               value="{{ char.profile_apparent_age }}"
+                               placeholder="e.g., Late 20s, eternally"
+                               {% if char.profile_locked %}disabled{% endif %}>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-bold small">Appearance</label>
+                        <textarea class="form-control" name="appearance" rows="4"
+                                  placeholder="How do they look? Bearing, features, style..."
+                                  {% if char.profile_locked %}disabled{% endif %}>{{ char.profile_appearance }}</textarea>
+                        <div class="form-text text-muted">Max 2,000 characters.</div>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-bold small">Biography</label>
+                        <textarea class="form-control" name="biography" rows="6"
+                                  placeholder="History, background, motivations, secrets..."
+                                  {% if char.profile_locked %}disabled{% endif %}>{{ char.profile_biography }}</textarea>
+                        <div class="form-text text-muted">Max 5,000 characters.</div>
+                    </div>
+                    {% if not char.profile_locked %}
+                    <div class="col-12">
+                        <div class="d-flex justify-content-between align-items-center">
+                            {% if char.profile_last_edited %}
+                            <small class="text-muted">Last saved: {{ char.profile_last_edited }}</small>
+                            {% else %}
+                            <span></span>
+                            {% endif %}
+                            <button type="submit" class="btn btn-danger">
+                                <i class="bi bi-floppy"></i> Save Profile
+                            </button>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- ═══ Submission Forms ═══ -->
 <div class="row mb-4">
 
@@ -581,6 +669,10 @@
         <i class="bi bi-people"></i>
         <span>Characters</span>
     </a>
+    <button class="player-bottom-nav-item" id="bottom-profile-btn" aria-label="IC Profile">
+        <i class="bi bi-person-badge"></i>
+        <span>Profile</span>
+    </button>
     <button class="player-bottom-nav-item" id="bottom-claim-btn" aria-label="Claim XP">
         <i class="bi bi-plus-circle"></i>
         <span>Claim XP</span>
@@ -614,6 +706,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 50);
     }
 
+    document.getElementById('bottom-profile-btn')?.addEventListener('click', function() {
+        expandAndScroll('ic-profile');
+    });
     document.getElementById('bottom-claim-btn')?.addEventListener('click', function() {
         expandAndScroll('claim-form');
     });

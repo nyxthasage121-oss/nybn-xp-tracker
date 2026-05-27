@@ -36,6 +36,16 @@ class Character:
     ingrained_discipline_name: str = ''
     ingrained_discipline_xp_used: int = 0
 
+    # IC Profile (player-editable RP fields)
+    profile_pronouns: str = ''
+    profile_concept: str = ''
+    profile_epitaph: str = ''
+    profile_apparent_age: str = ''
+    profile_appearance: str = ''
+    profile_biography: str = ''
+    profile_locked: bool = False
+    profile_last_edited: str = ''
+
 
 @dataclass
 class PlayerProfile:
@@ -80,6 +90,7 @@ class ChronicleSettings:
     has_midnight: bool = True       # Split each night into Dusk→Midnight + Midnight→Sunrise
     xp_frequency: str = 'weekly'   # 'weekly' (split) | 'biweekly' (single window per night)
     notes: str = ''
+    profile_webhook_url: str = ''  # Discord webhook URL for profile edit notifications
 
 
 @dataclass

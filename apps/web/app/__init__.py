@@ -41,6 +41,16 @@ def _apply_schema_migrations() -> None:
         # v4: chronicle_settings — Midnight toggle and XP frequency
         ("chronicle_settings", "has_midnight",  "ALTER TABLE chronicle_settings ADD COLUMN has_midnight BOOLEAN DEFAULT 1"),
         ("chronicle_settings", "xp_frequency",  "ALTER TABLE chronicle_settings ADD COLUMN xp_frequency VARCHAR(20) DEFAULT 'weekly'"),
+        # v5: IC Profile fields — player-editable RP bio on character pages
+        ("characters", "profile_pronouns",     "ALTER TABLE characters ADD COLUMN profile_pronouns VARCHAR(50) DEFAULT ''"),
+        ("characters", "profile_concept",      "ALTER TABLE characters ADD COLUMN profile_concept VARCHAR(200) DEFAULT ''"),
+        ("characters", "profile_epitaph",      "ALTER TABLE characters ADD COLUMN profile_epitaph VARCHAR(200) DEFAULT ''"),
+        ("characters", "profile_apparent_age", "ALTER TABLE characters ADD COLUMN profile_apparent_age VARCHAR(100) DEFAULT ''"),
+        ("characters", "profile_appearance",   "ALTER TABLE characters ADD COLUMN profile_appearance TEXT DEFAULT ''"),
+        ("characters", "profile_biography",    "ALTER TABLE characters ADD COLUMN profile_biography TEXT DEFAULT ''"),
+        ("characters", "profile_locked",       "ALTER TABLE characters ADD COLUMN profile_locked BOOLEAN DEFAULT 0"),
+        ("characters", "profile_last_edited",  "ALTER TABLE characters ADD COLUMN profile_last_edited VARCHAR(20) DEFAULT ''"),
+        ("chronicle_settings", "profile_webhook_url", "ALTER TABLE chronicle_settings ADD COLUMN profile_webhook_url VARCHAR(500) DEFAULT ''"),
     ]
     for table, column, sql in migrations:
         if sql is None:

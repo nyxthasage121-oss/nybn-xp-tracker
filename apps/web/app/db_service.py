@@ -85,6 +85,14 @@ def _row_to_character(row: DbCharacter) -> Character:
         ingrained_discipline_flaw=bool(row.ingrained_discipline_flaw),
         ingrained_discipline_name=row.ingrained_discipline_name or '',
         ingrained_discipline_xp_used=row.ingrained_discipline_xp_used or 0,
+        profile_pronouns=row.profile_pronouns or '',
+        profile_concept=row.profile_concept or '',
+        profile_epitaph=row.profile_epitaph or '',
+        profile_apparent_age=row.profile_apparent_age or '',
+        profile_appearance=row.profile_appearance or '',
+        profile_biography=row.profile_biography or '',
+        profile_locked=bool(row.profile_locked),
+        profile_last_edited=row.profile_last_edited or '',
     )
 
 
@@ -369,7 +377,7 @@ class DBService:
 
         bool_fields = {
             'active', 'xp_cap_reached', 'retired',
-            'ingrained_discipline_flaw',
+            'ingrained_discipline_flaw', 'profile_locked',
         }
         int_fields = {'creation_xp', 'ingrained_discipline_xp_used'}
 
@@ -512,6 +520,96 @@ class DBService:
         self.log_action(staff_user, 'unretire_character', character_name,
                         f'Retirement reversed on {_today_str()}.')
 
+    # ── IC Profile ────────────────────────────────────────────────────────────
+
+    def save_character_profile(self, character_name: str,
+                                fields: dict, discord_name: str) -> None:
+        """Save player-editable IC profile fields.
+
+        Raises ValueError if the profile is locked by staff.
+        `fields` should be a dict of {db_column_name: value}, e.g.
+        {'profile_pronouns': 'she/her', 'profile_biography': '...'}.
+        """
+        row = DbCharacter.query.filter(
+            func.lower(DbCharacter.character_name) == character_name.lower()
+        ).first()
+        if not row:
+            raise ValueError(f'Character not found: {character_name}')
+        if row.profile_locked:
+            raise ValueError('This profile has been locked by staff and cannot be edited.')
+
+        allowed = {
+            'profile_pronouns', 'profile_concept', 'profile_epitaph',
+            'profile_apparent_age', 'profile_appearance', 'profile_biography',
+        }
+        max_lengths = {
+            'profile_pronouns': 50,
+            'profile_concept': 200,
+            'profile_epitaph': 200,
+            'profile_apparent_age': 100,
+            'profile_appearance': 2000,
+            'profile_biography': 5000,
+        }
+
+        changed: list[str] = []
+        for key, value in fields.items():
+            if key not in allowed:
+                continue
+            text = str(value or '').strip()
+            limit = max_lengths.get(key, 500)
+            text = text[:limit]
+            if getattr(row, key, '') != text:
+                changed.append(key.replace('profile_', ''))
+            setattr(row, key, text)
+
+        row.profile_last_edited = _now_str()
+        db.session.commit()
+
+        self.log_action(
+            staff_user=f'player:{discord_name}',
+            action_type='player_profile_edit',
+            target=character_name,
+            details=f'Updated: {", ".join(changed)}' if changed else 'No changes',
+        )
+
+        if changed:
+            settings = self.get_chronicle_settings()
+            if settings.profile_webhook_url:
+                self._fire_profile_webhook(
+                    settings.profile_webhook_url,
+                    character_name, discord_name, changed,
+                )
+
+    def _fire_profile_webhook(self, webhook_url: str, character_name: str,
+                               player_name: str, fields_changed: list[str]) -> None:
+        """POST a Discord embed to `webhook_url` announcing a profile edit."""
+        import json as _json
+        import urllib.request
+
+        embed = {
+            'title': f'\U0001f4dd Profile Updated — {character_name}',
+            'color': 0x8B1A1A,   # deep crimson to match the VtM theme
+            'fields': [
+                {'name': 'Player', 'value': player_name or '—', 'inline': True},
+                {'name': 'Fields Changed',
+                 'value': ', '.join(fields_changed), 'inline': True},
+            ],
+            'timestamp': datetime.utcnow().isoformat() + 'Z',
+            'footer': {'text': 'NYbN XP Tracker'},
+        }
+        payload = _json.dumps({'embeds': [embed]}).encode('utf-8')
+        req = urllib.request.Request(
+            webhook_url,
+            data=payload,
+            headers={'Content-Type': 'application/json'},
+            method='POST',
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=5):
+                pass
+        except Exception:
+            pass  # Webhook failures are non-fatal; don't break the player's save
+
     # ── Play Periods ──────────────────────────────────────────────────────────
 
     def get_all_periods(self) -> list[PlayPeriod]:
@@ -592,6 +690,7 @@ class DBService:
             has_midnight=bool(row.has_midnight) if row.has_midnight is not None else True,
             xp_frequency=row.xp_frequency or 'weekly',
             notes=row.notes or '',
+            profile_webhook_url=row.profile_webhook_url or '',
         )
 
     def save_chronicle_settings(self, settings: ChronicleSettings) -> None:
@@ -606,6 +705,7 @@ class DBService:
         row.has_midnight = settings.has_midnight
         row.xp_frequency = settings.xp_frequency
         row.notes = settings.notes
+        row.profile_webhook_url = settings.profile_webhook_url or ''
         db.session.commit()
 
     def seed_chronicle_settings_if_empty(self) -> None:
