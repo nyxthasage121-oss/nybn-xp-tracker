@@ -79,7 +79,7 @@ def detail(coterie_id: int):
         return '●' * n + '○' * (mx - n)
 
     sites_entitled = (
-        0 if coterie.chasse <= 1 else
+        0 if coterie.chasse == 0 else
         1 if coterie.chasse <= 3 else
         2 if coterie.chasse == 4 else 3
     )

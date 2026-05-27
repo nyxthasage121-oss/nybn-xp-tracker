@@ -1,54 +1,49 @@
-/* NYbN XP Tracker — Dark theme styling */
+/* NYbN XP Tracker — Modern Noir theme */
 
 :root {
-    /* ── NYC Brooklyn Bridge palette — sampled from nyc.jpg ── */
-    /* Blood red accent / Freedom Tower electric blue / window amber */
-    --vtm-red:       #cc1a1a;   /* blood red */
-    --vtm-red-deep:  #8b0000;   /* deep crimson */
-    --vtm-red-light: #e84040;   /* bright highlight red */
-    --vtm-steel:     #2476e8;   /* Freedom Tower electric blue */
-    --vtm-gold:      #d4a840;   /* building window amber */
+    /* ── Accent — blood red, cooler on charcoal ── */
+    --vtm-red:       #c41a1a;
+    --vtm-red-deep:  #8b0000;
+    --vtm-red-light: #e04040;
+    --vtm-steel:     #2476e8;   /* Freedom Tower blue */
+    --vtm-gold:      #c8a048;   /* amber gold, reads hot on charcoal */
 
     /* ── Dimensions ── */
     --sidebar-width: 250px;
-    --radius:        4px;
+    --radius:        3px;       /* sharper — dossier, not app */
     --radius-sm:     2px;
 
-    /* ── Background layers — midnight navy from the photo sky ── */
-    --bg-sidebar: #020810;   /* deepest shadow, darker than sky */
-    --bg-page:    #060d1c;   /* midnight sky */
-    --bg-panel:   #0d1a2e;   /* building faces in darkness */
-    --bg-hover:   #142238;   /* slightly lit — hover state */
+    /* ── Backgrounds — midnight city: deep blue-black ── */
+    --bg-sidebar: #08080f;
+    --bg-page:    #0c0c18;      /* midnight blue-black */
+    --bg-panel:   #131322;      /* dark charcoal-blue panels */
+    --bg-hover:   #1c1c2c;
 
-    /* ── Text — cool blue-tinted off-white like the sky haze ── */
-    --text-primary:  #ccd8ec;
-    --text-muted:    #6888aa;
-    --text-disabled: #3a5070;
+    /* ── Text — soft blue-white, like city lights through glass ── */
+    --text-primary:  #d0d8e8;
+    --text-muted:    #706a62;
+    --text-disabled: #2c2c3c;
 
-    /* ── Bootstrap overrides — sharp edges ── */
-    --bs-border-radius:      4px;
+    /* ── Bootstrap overrides ── */
+    --bs-border-radius:      3px;
     --bs-border-radius-sm:   2px;
-    --bs-border-radius-lg:   4px;
-    --bs-border-radius-xl:   4px;
-    --bs-card-border-radius: 4px;
-    --bs-body-bg:            #060d1c;
-    --bs-body-color:         #ccd8ec;
+    --bs-border-radius-lg:   3px;
+    --bs-border-radius-xl:   3px;
+    --bs-card-border-radius: 3px;
+    --bs-body-bg:            #0c0c18;
+    --bs-body-color:         #d0d8e8;
 }
 
 body {
     background-color: var(--bg-page);
-    /* Sky gradient — nearly black at top, deep navy at horizon,
-       warm bridge-orange city glow rising from below,
-       faint Freedom Tower blue drifting in from the right              */
+    /* Midnight city — deep blue-black, blood warmth rising from below */
     background-image:
-        radial-gradient(ellipse 140% 40% at 50% 115%, rgba(120, 0, 0, 0.22) 0%, transparent 55%),
-        radial-gradient(ellipse 55% 45% at 92% 12%,  rgba(36, 118, 232, 0.08) 0%, transparent 52%),
+        radial-gradient(ellipse 160% 35% at 50% 120%, rgba(140, 0, 0, 0.14) 0%, transparent 52%),
         linear-gradient(180deg,
-            #020810 0%,
-            #04091a 18%,
-            #060d1e 40%,
-            #081226 65%,
-            #060e20 100%);
+            #07070f 0%,
+            #0a0a14 20%,
+            #0c0c18 50%,
+            #0e0e1e 100%);
     color: var(--text-primary);
     font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
     font-size: 0.925rem;
@@ -67,23 +62,29 @@ body::before {
     background-repeat: repeat;
 }
 
-/* Blood splatter — one structural accent, bottom-right corner      */
-/* Darker-than-background, not red. Felt, not decorative.           */
-main.flex-grow-1::after {
+/* ── Custom scrollbar — thin, blood-red accented ────────────────── */
+::-webkit-scrollbar              { width: 6px; height: 6px; }
+::-webkit-scrollbar-track        { background: #040404; }
+::-webkit-scrollbar-thumb        { background: rgba(196, 26, 26, 0.45); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover  { background: rgba(196, 26, 26, 0.75); }
+::-webkit-scrollbar-corner       { background: #040404; }
+*  { scrollbar-width: thin; scrollbar-color: rgba(196,26,26,0.45) #040404; }
+
+/* ── Body vignette — film noir edge darkening ───────────────────── */
+body::after {
     content: '';
     position: fixed;
-    bottom: 0;
-    right: 0;
-    width: 420px;
-    height: 420px;
+    inset: 0;
     pointer-events: none;
-    z-index: 8998;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cg opacity='0.72' fill='%230a1020'%3E%3C!-- Main mass --%3E%3Cpath d='M142,128 C158,114 170,122 166,142 C162,160 146,167 131,160 C116,153 126,142 142,128 Z'/%3E%3C!-- Drip streak --%3E%3Cpath d='M150,160 C152,172 150,186 146,191 C143,195 140,193 141,187 C143,178 146,170 150,160 Z'/%3E%3C!-- Secondary drip --%3E%3Cpath d='M134,165 C133,174 130,181 127,182 C125,183 124,180 126,176 C128,170 131,167 134,165 Z'/%3E%3C!-- Satellite drops --%3E%3Ccircle cx='117' cy='150' r='7'/%3E%3Ccircle cx='160' cy='167' r='5'/%3E%3Ccircle cx='168' cy='134' r='3.5'/%3E%3Ccircle cx='124' cy='167' r='3'/%3E%3Ccircle cx='110' cy='162' r='2'/%3E%3Ccircle cx='172' cy='150' r='2.5'/%3E%3Ccircle cx='155' cy='176' r='2'/%3E%3C!-- Thin streak --%3E%3Cpath d='M135,152 C129,158 122,163 118,165' stroke='%230a1020' stroke-width='2.5' stroke-linecap='round' fill='none'/%3E%3C!-- Fine scatter --%3E%3Ccircle cx='104' cy='158' r='1.5'/%3E%3Ccircle cx='176' cy='142' r='1.5'/%3E%3Ccircle cx='162' cy='180' r='1.2'/%3E%3Ccircle cx='113' cy='172' r='1'/%3E%3C/g%3E%3C/svg%3E");
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: bottom right;
-    opacity: 0.55;
+    z-index: 8999;
+    background: radial-gradient(
+        ellipse 100% 100% at 50% 50%,
+        transparent 38%,
+        rgba(0, 0, 0, 0.28) 68%,
+        rgba(0, 0, 0, 0.62) 100%
+    );
 }
+
 
 /* ── Typography ─────────────────────────────────────────────────── */
 h1, h2, h3, h4, h5, h6 {
@@ -91,7 +92,8 @@ h1, h2, h3, h4, h5, h6 {
     letter-spacing: 0.02em;
     color: var(--text-primary);
     font-weight: 600;
-    -webkit-text-stroke: 0.35px rgba(255, 255, 255, 0.1);
+    -webkit-text-stroke: 1.5px rgba(208, 216, 232, 0.5);
+    paint-order: stroke fill;
     text-shadow: 0 1px 4px rgba(0, 0, 0, 0.75);
 }
 
@@ -264,32 +266,42 @@ body.login-page {
     transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease;
 }
 
-/* Hover: lift, no red */
+/* Hover: warm lift with red edge hint */
 .sidebar .nav-link:hover {
     color: var(--text-primary);
-    background-color: var(--bg-hover);
-    border-left-color: transparent;
+    background: linear-gradient(to right, rgba(255,255,255,0.05) 0%, transparent 100%);
+    border-left-color: rgba(196, 26, 26, 0.35);
 }
 
-/* Active: solid red bar on left edge — the eye's anchor */
+/* Active: blood-red gradient sweep + glowing icon */
 .sidebar .nav-link.active {
     color: #fff;
-    background-color: rgba(204, 26, 26, 0.12);
+    background: linear-gradient(
+        to right,
+        rgba(196, 26, 26, 0.22) 0%,
+        rgba(196, 26, 26, 0.08) 55%,
+        transparent 100%
+    );
     border-left-color: var(--vtm-red);
+    box-shadow: inset 3px 0 12px rgba(196, 26, 26, 0.15);
+    text-shadow: 0 0 14px rgba(196, 26, 26, 0.35);
 }
 
 .sidebar .nav-link i {
     width: 18px;
     margin-right: 10px;
     opacity: 0.6;
+    transition: opacity 0.12s ease, filter 0.12s ease, color 0.12s ease;
 }
 
 .sidebar .nav-link:hover i {
-    opacity: 0.85;
+    opacity: 0.88;
 }
 
 .sidebar .nav-link.active i {
     opacity: 1;
+    color: var(--vtm-red-light);
+    filter: drop-shadow(0 0 5px rgba(196, 26, 26, 0.7));
 }
 
 /* Sidebar footer */
@@ -354,29 +366,39 @@ body.login-page {
 
 /* ── Global components ───────────────────────────────────────────── */
 
-/* Cards — panels sit slightly above the page, aged paper surface */
+/* Cards — dossier panels: charcoal surface, sharp edges, depth */
 .card {
     background-color: var(--bg-panel);
-    /* Grunge paper texture layered over panel color — felt-not-seen */
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.44 0.62' numOctaves='5' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)' opacity='0.085'/%3E%3C/svg%3E");
     background-size: 400px 400px;
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.055);
+    border-top-color: rgba(255, 255, 255, 0.09);   /* subtle top highlight */
     border-radius: var(--radius) !important;
-    transition: box-shadow 0.2s ease;
+    box-shadow:
+        0 1px 3px rgba(0, 0, 0, 0.55),
+        0 4px 18px rgba(0, 0, 0, 0.4),
+        0 0 0 1px rgba(180, 210, 255, 0.03),
+        0 0 28px rgba(80, 130, 220, 0.07);
+    transition: box-shadow 0.22s ease, border-color 0.22s ease;
 }
 
 .card:hover {
-    box-shadow: 0 6px 28px rgba(204, 26, 26, 0.12), 0 2px 8px rgba(0, 0, 0, 0.45);
+    box-shadow:
+        0 2px 8px rgba(0, 0, 0, 0.6),
+        0 10px 36px rgba(0, 0, 0, 0.5),
+        0 0 0 1px rgba(196, 26, 26, 0.1),
+        0 0 36px rgba(80, 130, 220, 0.06);
+    border-top-color: rgba(196, 26, 26, 0.22);
 }
 
 .card-header {
-    background-color: rgba(255, 255, 255, 0.03);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    background-color: rgba(0, 0, 0, 0.22);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.055);
     font-family: 'Inter', sans-serif;
     font-size: 0.875rem;
     font-weight: 500;
     color: var(--text-primary);
-    padding: 0.7rem 1rem;
+    padding: 0.65rem 1rem;
 }
 
 .card-body {
@@ -384,11 +406,11 @@ body.login-page {
 }
 
 .card-footer {
-    background-color: transparent;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    background-color: rgba(0, 0, 0, 0.14);
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-/* Buttons — primary red, secondary cold */
+/* Buttons — primary red with glow, secondary cold */
 .btn-danger, .btn-danger:focus {
     background-color: var(--vtm-red);
     border-color: var(--vtm-red);
@@ -397,11 +419,24 @@ body.login-page {
     font-family: 'Inter', sans-serif;
     font-weight: 500;
     letter-spacing: 0.02em;
+    transition: background-color 0.18s ease, box-shadow 0.18s ease, transform 0.12s ease;
 }
 
 .btn-danger:hover {
-    background-color: var(--vtm-red-deep);
-    border-color: var(--vtm-red-deep);
+    background-color: #a01515;
+    border-color: #8b0000;
+    color: #fff;
+    box-shadow:
+        0 0 0 1px rgba(196, 26, 26, 0.35),
+        0 0 14px rgba(196, 26, 26, 0.55),
+        0 0 32px rgba(196, 26, 26, 0.2),
+        0 3px 10px rgba(0, 0, 0, 0.6);
+    transform: translateY(-1px);
+}
+
+.btn-danger:active {
+    transform: translateY(0);
+    box-shadow: 0 0 8px rgba(196, 26, 26, 0.4);
 }
 
 .btn-outline-danger {
@@ -409,11 +444,16 @@ body.login-page {
     border-color: var(--vtm-red);
     border-radius: var(--radius-sm);
     font-family: 'Inter', sans-serif;
+    transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.12s ease;
 }
 
 .btn-outline-danger:hover {
     background-color: var(--vtm-red);
     border-color: var(--vtm-red);
+    box-shadow:
+        0 0 12px rgba(196, 26, 26, 0.5),
+        0 0 26px rgba(196, 26, 26, 0.18);
+    transform: translateY(-1px);
 }
 
 .btn-outline-secondary, .btn-secondary {
@@ -442,73 +482,99 @@ body.login-page {
     border-radius: var(--radius-sm);
 }
 
-/* Tables */
+/* Tables — case file aesthetic */
 .table {
     font-size: 0.875rem;
     font-family: 'Inter', sans-serif;
     --bs-table-bg: transparent;
+    border-collapse: separate;
+    border-spacing: 0;
 }
 
-.table th {
-    color: var(--text-muted);
-    border-color: rgba(255, 255, 255, 0.07);
-    font-weight: 500;
-    font-size: 0.75rem;
+.table thead th {
+    color: var(--vtm-gold);
+    border-bottom: 1px solid rgba(196, 26, 26, 0.3);
+    border-top: none;
+    font-weight: 600;
+    font-size: 0.72rem;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.09em;
     white-space: nowrap;
+    padding: 0.55rem 0.75rem;
+    background: rgba(0, 0, 0, 0.2);
 }
 
-.table td {
-    border-color: rgba(255, 255, 255, 0.05);
+.table tbody td {
+    border-color: rgba(255, 255, 255, 0.045);
     vertical-align: middle;
     color: var(--text-primary);
+    padding: 0.55rem 0.75rem;
 }
 
 /* Alternating rows */
 .table-dark {
     --bs-table-bg: var(--bg-panel);
-    --bs-table-striped-bg: #0b1624;
-    --bs-table-hover-bg: var(--bg-hover);
-    --bs-table-border-color: rgba(255,255,255,0.05);
+    --bs-table-striped-bg: rgba(255, 255, 255, 0.018);
+    --bs-table-hover-bg: transparent;
+    --bs-table-border-color: rgba(255, 255, 255, 0.045);
     --bs-table-color: var(--text-primary);
 }
 
 .table-striped > tbody > tr:nth-of-type(odd) > * {
-    background-color: rgba(255, 255, 255, 0.025);
+    background-color: rgba(255, 255, 255, 0.018);
 }
 
-/* Forms */
+/* Forms — interrogation room inputs */
 .form-control, .form-select {
-    background-color: var(--bg-hover);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background-color: #0e0e14;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-bottom-color: rgba(255, 255, 255, 0.14);
     border-radius: var(--radius-sm);
     color: var(--text-primary);
     font-family: 'Inter', sans-serif;
     font-size: 0.875rem;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.45);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.form-control:hover, .form-select:hover {
+    border-color: rgba(255, 255, 255, 0.16);
+    background-color: #101016;
 }
 
 .form-control:focus, .form-select:focus {
-    background-color: var(--bg-hover);
-    border-color: rgba(204, 26, 26, 0.5);
-    box-shadow: 0 0 0 3px rgba(204, 26, 26, 0.12);
-    color: var(--text-primary);
+    background-color: #0e0e14 !important;
+    border-color: rgba(196, 26, 26, 0.6) !important;
+    border-bottom-color: var(--vtm-red) !important;
+    box-shadow:
+        0 0 0 2px rgba(196, 26, 26, 0.10),
+        inset 0 1px 3px rgba(0, 0, 0, 0.45),
+        0 1px 0 rgba(196, 26, 26, 0.3) !important;
+    color: #e8e4de !important;
+    outline: none;
 }
 
 .form-control::placeholder {
     color: var(--text-disabled);
+    opacity: 1;
 }
 
 .form-label {
     color: var(--text-muted);
-    font-size: 0.8rem;
+    font-size: 0.76rem;
     font-family: 'Inter', sans-serif;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
     margin-bottom: 0.3rem;
 }
 
 .form-text {
     color: var(--text-disabled);
-    font-size: 0.78rem;
+    font-size: 0.76rem;
+}
+
+.form-select {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23706a62' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
 }
 
 /* Badges — outlined pill style (scoped to .badge so cards/alerts are unaffected) */
@@ -536,12 +602,12 @@ body.login-page {
     color: #e07070 !important;
 }
 
-/* Warning — amber tint; override Bootstrap text-dark too */
+/* Warning / Pending — gold tint, matches vtm-gold */
 .badge.bg-warning,
 .badge.bg-warning.text-dark {
-    background: rgba(180, 120, 0, 0.16) !important;
-    border-color: rgba(255, 160, 0, 0.28) !important;
-    color: #ffb74d !important;
+    background: rgba(200, 160, 72, 0.12) !important;
+    border-color: rgba(200, 160, 72, 0.32) !important;
+    color: var(--vtm-gold) !important;
 }
 
 /* Secondary / Inactive / Neutral */
@@ -551,26 +617,57 @@ body.login-page {
     color: var(--text-muted) !important;
 }
 
-/* Info / Primary — steel-blue tint */
+/* Info / Primary — gold tint (no blue in this palette) */
 .badge.bg-info,
 .badge.bg-primary {
-    background: rgba(30, 80, 130, 0.18) !important;
-    border-color: rgba(70, 140, 220, 0.3) !important;
-    color: #90caf9 !important;
+    background: rgba(200, 160, 72, 0.12) !important;
+    border-color: rgba(200, 160, 72, 0.28) !important;
+    color: var(--vtm-gold) !important;
 }
 
-/* Alerts */
+/* Alerts — classified dossier notices */
 .alert {
     border-radius: var(--radius);
+    border: 1px solid transparent;
     border-left-width: 3px;
     font-family: 'Inter', sans-serif;
     font-size: 0.875rem;
+    padding: 0.7rem 1rem;
 }
 
-.alert-danger { border-left-color: var(--vtm-red); }
-.alert-success { border-left-color: #2e7d32; }
-.alert-warning { border-left-color: #c49010; }
-.alert-info { border-left-color: var(--vtm-steel); }
+.alert-danger {
+    background-color: rgba(100, 0, 0, 0.18);
+    border-left-color: var(--vtm-red);
+    border-color: rgba(196, 26, 26, 0.22);
+    color: #e8a0a0;
+}
+
+.alert-success {
+    background-color: rgba(20, 60, 20, 0.22);
+    border-left-color: #2e7d32;
+    border-color: rgba(46, 125, 50, 0.22);
+    color: #90c890;
+}
+
+.alert-warning {
+    background-color: rgba(80, 50, 0, 0.22);
+    border-left-color: #a07820;
+    border-color: rgba(180, 120, 0, 0.22);
+    color: #d4a84a;
+}
+
+.alert-info {
+    background-color: rgba(60, 45, 5, 0.22);
+    border-left-color: var(--vtm-gold);
+    border-color: rgba(200, 160, 72, 0.22);
+    color: #c8a048;
+}
+
+.alert .btn-close {
+    opacity: 0.4;
+    filter: invert(1);
+}
+.alert .btn-close:hover { opacity: 0.8; }
 
 /* Collapse / accordion borders */
 .border-secondary { border-color: rgba(255, 255, 255, 0.07) !important; }
@@ -596,6 +693,45 @@ body.login-page {
 .dropdown-item:hover {
     background-color: var(--bg-hover);
     color: #fff;
+}
+
+/* ── NYC Skyline Banner — decorative strip at top of staff pages ── */
+.nyc-banner {
+    /* Compensate for main's p-4 (1.5rem) padding */
+    margin: -1.5rem -1.5rem 1.75rem;
+    height: 150px;
+    background-image:
+        linear-gradient(
+            to bottom,
+            rgba(0, 0, 0, 0.04) 0%,
+            rgba(8, 8, 18, 0.45) 35%,
+            rgba(10, 10, 20, 0.82) 62%,
+            rgba(12, 12, 24, 0.97) 80%,
+            #0c0c18 100%
+        ),
+        url('/static/images/nyc.jpg');
+    background-size: cover;
+    background-position: center 42%;
+    pointer-events: none;
+    flex-shrink: 0;
+    /* Subtle inner vignette on sides */
+    box-shadow: inset 60px 0 60px rgba(0,0,0,0.45), inset -60px 0 60px rgba(0,0,0,0.45);
+}
+
+/* Slightly taller on the player-facing side */
+.nyc-banner--player {
+    height: 180px;
+    background-position: center 38%;
+}
+
+@media (max-width: 767.98px) {
+    .nyc-banner {
+        margin: -1rem -1rem 1.25rem;
+        height: 100px;
+    }
+    .nyc-banner--player {
+        height: 120px;
+    }
 }
 
 /* ── Player navbar ──────────────────────────────────────────────── */
@@ -633,7 +769,7 @@ body.login-page {
     line-height: 1;
 }
 
-.stat-card-characters { border-top-color: #4a9eff; }
+.stat-card-characters { border-top-color: var(--vtm-gold); }
 .stat-card-claims      { border-top-color: #ff9800; }
 .stat-card-spends      { border-top-color: var(--vtm-red-light); }
 
@@ -645,46 +781,19 @@ body.login-page {
     text-shadow: 0 0 18px rgba(197, 165, 90, 0.25);
 }
 
-/* ── Tables ─────────────────────────────────────────────────────── */
-.table {
-    font-size: 0.9rem;
-}
-
-.table th {
-    color: var(--vtm-gold);
-    border-color: rgba(255, 255, 255, 0.07);
-    font-weight: 600;
-    white-space: nowrap;
-}
-
-.table td {
-    border-color: #0e1e30;
-    vertical-align: middle;
-}
-
-/* Clickable rows — blood trail */
+/* Clickable rows */
 tr[data-href] {
     cursor: pointer;
-    border-left: 3px solid transparent;
-    transition: border-left-color 0.18s ease;
+    transition: background-color 0.12s ease;
 }
 
-tr[data-href]:hover {
-    border-left-color: var(--vtm-red) !important;
+tr[data-href]:hover > td {
+    background-color: rgba(255, 255, 255, 0.045) !important;
 }
 
-tr[data-href]:hover td {
-    background: linear-gradient(
-        to right,
-        rgba(204, 26, 26, 0.16) 0%,
-        rgba(204, 26, 26, 0.06) 40%,
-        transparent 80%
-    ) !important;
-    color: #fff;
-}
-
-tr[data-href]:hover td:first-child {
-    text-shadow: 0 0 14px rgba(204, 26, 26, 0.5);
+/* Regular (non-clickable) tbody row hover */
+.table-hover tbody tr:not([data-href]):hover > td {
+    background-color: rgba(255, 255, 255, 0.025) !important;
 }
 
 /* ── XP colors ──────────────────────────────────────────────────── */
@@ -1524,17 +1633,57 @@ tr.has-clan-color {
 
 *:focus-visible {
     outline: none !important;
-    box-shadow: 0 0 0 2px rgba(204, 26, 26, 0.5) !important;
+    box-shadow: 0 0 0 2px rgba(196, 26, 26, 0.5) !important;
 }
 
-.form-control:focus,
-.form-select:focus {
-    background-color: var(--bg-hover) !important;
-    border-color: rgba(204, 26, 26, 0.55) !important;
-    box-shadow:
-        0 0 0 3px rgba(204, 26, 26, 0.1),
-        inset 0 1px 0 rgba(204, 26, 26, 0.06) !important;
-    color: var(--text-primary) !important;
+/* ══════════════════════════════════════════════════════════════════
+   PAGE HEADING — dossier title treatment
+   Add class="page-heading" (or "mb-0 page-heading") to any h1/h2
+   at the top of a content block.
+   ══════════════════════════════════════════════════════════════════ */
+
+h1.page-heading, h2.page-heading, .page-heading {
+    font-family: 'Cinzel', serif;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--text-primary);
+    padding-bottom: 0.6rem;
+    margin-bottom: 1.25rem;
+    position: relative;
+    -webkit-text-stroke: 2px rgba(208, 216, 232, 0.6);
+    paint-order: stroke fill;
+    text-shadow:
+        0 0 28px rgba(196, 26, 26, 0.1),
+        0 1px 4px rgba(0, 0, 0, 0.8);
+}
+
+/* Fading red rule the full width */
+.page-heading::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(
+        to right,
+        var(--vtm-red) 0%,
+        rgba(196, 26, 26, 0.28) 22%,
+        rgba(196, 26, 26, 0.06) 55%,
+        transparent 100%
+    );
+}
+
+/* Short bright tick at the left — the anchor */
+.page-heading::before {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    width: 28px;
+    height: 3px;
+    background: var(--vtm-red);
+    box-shadow: 0 0 10px rgba(196, 26, 26, 0.65);
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -1554,8 +1703,8 @@ tr.has-clan-color {
     height: 1px;
     background: linear-gradient(
         to right,
-        rgba(204, 26, 26, 0.5),
-        rgba(204, 26, 26, 0.12) 55%,
+        rgba(196, 26, 26, 0.55),
+        rgba(196, 26, 26, 0.14) 50%,
         transparent
     );
     pointer-events: none;

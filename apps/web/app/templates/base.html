@@ -171,6 +171,7 @@
 
         <!-- Main content -->
         <main class="flex-grow-1 p-4" style="min-height: 100vh;">
+            <div class="nyc-banner" aria-hidden="true"></div>
             {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
             {% for category, message in messages %}

@@ -560,6 +560,15 @@ class DBService:
 
         db.session.commit()
 
+    def delete_period(self, label: str, staff_user: str) -> None:
+        """Permanently delete a play period. Claims referencing it keep their label string."""
+        row = DbPlayPeriod.query.filter_by(period_label=label).first()
+        if not row:
+            raise ValueError(f'Period "{label}" not found.')
+        db.session.delete(row)
+        db.session.commit()
+        self.log_action(staff_user, 'delete_period', label, f'Deleted play period: {label}')
+
     def get_next_night_number(self) -> int:
         periods = self.get_all_periods()
         if not periods:
@@ -576,10 +585,12 @@ class DBService:
         if not row:
             return ChronicleSettings()
         return ChronicleSettings(
-            server_start_date=row.server_start_date or '2023-04-13',
+            server_start_date=row.server_start_date or '2023-04-10',
             timeskip_interval_weeks=row.timeskip_interval_weeks or 8,
-            night_duration_days=row.night_duration_days or 12,
+            night_duration_days=row.night_duration_days or 14,
             downtime_duration_days=row.downtime_duration_days or 2,
+            has_midnight=bool(row.has_midnight) if row.has_midnight is not None else True,
+            xp_frequency=row.xp_frequency or 'weekly',
             notes=row.notes or '',
         )
 
@@ -592,6 +603,8 @@ class DBService:
         row.timeskip_interval_weeks = settings.timeskip_interval_weeks
         row.night_duration_days = settings.night_duration_days
         row.downtime_duration_days = settings.downtime_duration_days
+        row.has_midnight = settings.has_midnight
+        row.xp_frequency = settings.xp_frequency
         row.notes = settings.notes
         db.session.commit()
 
@@ -606,30 +619,42 @@ class DBService:
 
         Rules:
         - Nights start on Monday.
-        - Each night is `night_duration_days` long.
-        - After every (timeskip_interval_weeks // 2) nights, insert a downtime.
-        - The downtime is `downtime_duration_days` long, also starting on Monday.
+        - nights_per_cycle = timeskip_interval_weeks * 7 // night_duration_days.
+          After that many nights, insert a downtime.
+        - When has_midnight=True AND xp_frequency='weekly': each night produces two periods:
+            "Night N — Dusk to Midnight"   Mon → Sat  (6 days)
+            "Night N — Midnight to Sunrise" Sat → Sat  (8 days)
+          The full two-week block still counts as ONE night toward nights_per_cycle.
+        - When has_midnight=False OR xp_frequency='biweekly': one period per night
+            "Night N - <start> - <end>"   (night_duration_days long)
         - Returns the list of PlayPeriod objects that were created.
         """
+        import sys
         from datetime import date as date_cls
 
         settings = self.get_chronicle_settings()
-        night_len = settings.night_duration_days
+        night_len = max(1, settings.night_duration_days)
         dt_len = settings.downtime_duration_days
-        nights_per_cycle = max(1, settings.timeskip_interval_weeks // 2)
+        split_night = settings.has_midnight and settings.xp_frequency == 'weekly'
+        # Correct formula: how many night-length blocks fit in the timeskip interval
+        nights_per_cycle = max(1, settings.timeskip_interval_weeks * 7 // night_len)
 
         all_periods = self.get_all_periods()
         existing_labels = {p.period_label for p in all_periods}
 
-        # Find the latest end date across all existing periods
+        _dfmt = '%#d' if sys.platform == 'win32' else '%-d'
+
         def _parse(s: str):
-            s = s.replace('-', '')
+            s = str(s or '').replace('-', '')
             if len(s) == 8:
                 try:
                     return datetime.strptime(s, '%Y%m%d').date()
                 except ValueError:
                     pass
             return None
+
+        def _fmt(d) -> str:
+            return d.strftime(f'%b {_dfmt}')
 
         last_end: date_cls | None = None
         last_night_num = 0
@@ -642,35 +667,50 @@ class DBService:
                     last_end = ed
                 if p.period_type == 'night':
                     last_night_num = max(last_night_num, p.night_number)
-            # Count how many consecutive nights since the last downtime/timeskip
-            sorted_periods = sorted(all_periods, key=lambda x: x.night_number)
+
+            # Count unique nights since the last downtime/timeskip
+            sorted_periods = sorted(all_periods, key=lambda x: (x.night_number, x.period_label))
+            seen_night_nums: set[int] = set()
             for p in reversed(sorted_periods):
                 if p.period_type in ('downtime', 'timeskip'):
                     break
-                if p.period_type == 'night':
+                if p.period_type == 'night' and p.night_number not in seen_night_nums:
                     nights_since_downtime += 1
+                    seen_night_nums.add(p.night_number)
 
-        # If no periods exist at all, start at Night 62 the Monday after today
+        # If no periods exist, calculate night number and end-date from server start date.
+        # This lets the generator resume at the correct night without backfilling history.
         if last_end is None:
-            last_end = date_cls.today()
-            last_night_num = 61  # NYbN is on Night 61 currently
+            start_date = _parse(settings.server_start_date)
+            today = date_cls.today()
+            if start_date and night_len > 0 and today >= start_date:
+                days_elapsed = (today - start_date).days
+                last_night_num = days_elapsed // night_len
+                if last_night_num > 0:
+                    # End of the last completed night (one day before the current night started)
+                    last_end = start_date + timedelta(days=last_night_num * night_len - 1)
+                else:
+                    last_end = start_date - timedelta(days=1)
+                nights_since_downtime = last_night_num % nights_per_cycle
+            else:
+                last_night_num = 0
+                last_end = (start_date - timedelta(days=1)) if start_date else today
 
         next_night_num = last_night_num + 1
         created: list[PlayPeriod] = []
         nights_generated = 0
 
         while nights_generated < count:
-            # Next start = day after last_end, snapped to Monday
+            # Next start = day after last_end, snapped forward to Monday
             candidate = last_end + timedelta(days=1)
             while candidate.weekday() != 0:   # 0 = Monday
                 candidate += timedelta(days=1)
             next_start = candidate
 
-            # Should we insert a downtime first?
+            # Insert a downtime before the next night if we've hit the cycle boundary
             if nights_since_downtime > 0 and nights_since_downtime % nights_per_cycle == 0:
-                # Insert a downtime period
                 dt_end = next_start + timedelta(days=dt_len - 1)
-                dt_label = f'Downtime — {next_start.strftime("%b %-d") if __import__("sys").platform != "win32" else next_start.strftime("%b %#d")}'
+                dt_label = f'Downtime — {_fmt(next_start)}'
                 if dt_label not in existing_labels:
                     dt_period = PlayPeriod(
                         period_label=dt_label,
@@ -689,31 +729,71 @@ class DBService:
                 nights_since_downtime = 0
                 continue  # re-loop to place the next night after the downtime
 
-            # Create a regular night
-            night_end = next_start + timedelta(days=night_len - 1)
-            # Format dates without leading zeros (cross-platform)
-            _platform = __import__('sys').platform
-            _dfmt = '%#d' if _platform == 'win32' else '%-d'
-            start_fmt = next_start.strftime(f'%b {_dfmt}')
-            end_fmt = night_end.strftime(f'%b {_dfmt}')
-            label = f'Night {next_night_num} - {start_fmt} - {end_fmt}'
-
-            if label not in existing_labels:
-                period = PlayPeriod(
-                    period_label=label,
-                    night_number=next_night_num,
-                    start_date=next_start.strftime('%Y%m%d'),
-                    end_date=night_end.strftime('%Y%m%d'),
-                    session_number=next_night_num,
-                    submissions_open=True,
-                    active=True,
-                    period_type='night',
+            if split_night:
+                # ── Dusk to Midnight: Mon → Sat (6 days) ──
+                dtm_end = next_start + timedelta(days=5)
+                dtm_label = (
+                    f'Night {next_night_num} — Dusk to Midnight'
+                    f' ({_fmt(next_start)} – {_fmt(dtm_end)})'
                 )
-                self.create_period(period)
-                created.append(period)
-                existing_labels.add(label)
+                if dtm_label not in existing_labels:
+                    dtm_period = PlayPeriod(
+                        period_label=dtm_label,
+                        night_number=next_night_num,
+                        start_date=next_start.strftime('%Y%m%d'),
+                        end_date=dtm_end.strftime('%Y%m%d'),
+                        session_number=next_night_num,
+                        submissions_open=True,
+                        active=True,
+                        period_type='night',
+                    )
+                    self.create_period(dtm_period)
+                    created.append(dtm_period)
+                    existing_labels.add(dtm_label)
 
-            last_end = night_end
+                # ── Midnight to Sunrise: Sat → Sat (8 days) ──
+                mts_start = dtm_end
+                mts_end = mts_start + timedelta(days=7)
+                mts_label = (
+                    f'Night {next_night_num} — Midnight to Sunrise'
+                    f' ({_fmt(mts_start)} – {_fmt(mts_end)})'
+                )
+                if mts_label not in existing_labels:
+                    mts_period = PlayPeriod(
+                        period_label=mts_label,
+                        night_number=next_night_num,
+                        start_date=mts_start.strftime('%Y%m%d'),
+                        end_date=mts_end.strftime('%Y%m%d'),
+                        session_number=next_night_num,
+                        submissions_open=True,
+                        active=True,
+                        period_type='night',
+                    )
+                    self.create_period(mts_period)
+                    created.append(mts_period)
+                    existing_labels.add(mts_label)
+
+                last_end = mts_end
+            else:
+                # ── Single period per night ──
+                night_end = next_start + timedelta(days=night_len - 1)
+                label = f'Night {next_night_num} - {_fmt(next_start)} - {_fmt(night_end)}'
+                if label not in existing_labels:
+                    period = PlayPeriod(
+                        period_label=label,
+                        night_number=next_night_num,
+                        start_date=next_start.strftime('%Y%m%d'),
+                        end_date=night_end.strftime('%Y%m%d'),
+                        session_number=next_night_num,
+                        submissions_open=True,
+                        active=True,
+                        period_type='night',
+                    )
+                    self.create_period(period)
+                    created.append(period)
+                    existing_labels.add(label)
+                last_end = night_end
+
             last_night_num = next_night_num
             next_night_num += 1
             nights_since_downtime += 1

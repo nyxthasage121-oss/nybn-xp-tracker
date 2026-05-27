@@ -185,6 +185,28 @@ def toggle_active(label):
     return redirect(url_for('periods.list_periods'))
 
 
+@bp.route('/<path:label>/delete', methods=['POST'])
+@require_moderator
+def delete_period(label):
+    """Permanently delete a play period."""
+    # Warn if there are claims attached, but still allow deletion
+    from app.db import DbXPClaim
+    claim_count = DbXPClaim.query.filter_by(play_period=label).count()
+    try:
+        db_service.delete_period(label, get_staff_user())
+        if claim_count:
+            flash(
+                f'Deleted "{label}". Note: {claim_count} claim(s) referenced this period — '
+                f'they still exist but the period is gone.',
+                'warning',
+            )
+        else:
+            flash(f'Deleted "{label}".', 'success')
+    except ValueError as exc:
+        flash(str(exc), 'danger')
+    return redirect(url_for('periods.list_periods'))
+
+
 @bp.route('/settings', methods=['GET', 'POST'])
 @require_moderator
 def settings():
@@ -193,11 +215,15 @@ def settings():
 
     if request.method == 'POST':
         try:
+            night_days = int(request.form.get('night_duration_days', 14))
+            ts_weeks = int(request.form.get('timeskip_interval_weeks', 8))
             new_settings = ChronicleSettings(
-                server_start_date=request.form.get('server_start_date', '').strip() or '2023-04-13',
-                timeskip_interval_weeks=int(request.form.get('timeskip_interval_weeks', 8)),
-                night_duration_days=int(request.form.get('night_duration_days', 12)),
+                server_start_date=request.form.get('server_start_date', '').strip() or '2023-04-10',
+                timeskip_interval_weeks=ts_weeks,
+                night_duration_days=night_days,
                 downtime_duration_days=int(request.form.get('downtime_duration_days', 2)),
+                has_midnight='has_midnight' in request.form,
+                xp_frequency=request.form.get('xp_frequency', 'weekly'),
                 notes=request.form.get('notes', '').strip(),
             )
             db_service.save_chronicle_settings(new_settings)
@@ -208,7 +234,9 @@ def settings():
                 details=(
                     f'Timeskip every {new_settings.timeskip_interval_weeks} weeks, '
                     f'night={new_settings.night_duration_days}d, '
-                    f'downtime={new_settings.downtime_duration_days}d'
+                    f'downtime={new_settings.downtime_duration_days}d, '
+                    f'has_midnight={new_settings.has_midnight}, '
+                    f'xp_frequency={new_settings.xp_frequency}'
                 ),
             )
             flash('Chronicle settings saved.', 'success')
@@ -216,7 +244,8 @@ def settings():
             flash(f'Invalid value: {exc}', 'danger')
         return redirect(url_for('periods.settings'))
 
-    nights_per_cycle = max(1, current.timeskip_interval_weeks // 2)
+    night_len = max(1, current.night_duration_days)
+    nights_per_cycle = max(1, current.timeskip_interval_weeks * 7 // night_len)
     return render_template(
         'periods/settings.html',
         settings=current,

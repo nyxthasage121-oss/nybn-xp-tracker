@@ -34,6 +34,13 @@ def _apply_schema_migrations() -> None:
         # v2: night-cycle schedule fields
         ("play_periods",       "period_type",            "ALTER TABLE play_periods ADD COLUMN period_type VARCHAR(20) DEFAULT 'night'"),
         ("chronicle_settings", "timeskip_interval_weeks", None),  # table created by create_all — just verify
+        # v3: coterie_requests schema redesign (description/proposed_members → notes/has_enough_members/members_have_met)
+        ("coterie_requests", "notes",              "ALTER TABLE coterie_requests ADD COLUMN notes TEXT DEFAULT ''"),
+        ("coterie_requests", "has_enough_members", "ALTER TABLE coterie_requests ADD COLUMN has_enough_members BOOLEAN DEFAULT 0"),
+        ("coterie_requests", "members_have_met",   "ALTER TABLE coterie_requests ADD COLUMN members_have_met BOOLEAN DEFAULT 0"),
+        # v4: chronicle_settings — Midnight toggle and XP frequency
+        ("chronicle_settings", "has_midnight",  "ALTER TABLE chronicle_settings ADD COLUMN has_midnight BOOLEAN DEFAULT 1"),
+        ("chronicle_settings", "xp_frequency",  "ALTER TABLE chronicle_settings ADD COLUMN xp_frequency VARCHAR(20) DEFAULT 'weekly'"),
     ]
     for table, column, sql in migrations:
         if sql is None:

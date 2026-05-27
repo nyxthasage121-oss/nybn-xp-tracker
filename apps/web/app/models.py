@@ -73,10 +73,12 @@ class PlayPeriod:
 
 @dataclass
 class ChronicleSettings:
-    server_start_date: str = '2023-04-13'
+    server_start_date: str = '2023-04-10'
     timeskip_interval_weeks: int = 8
-    night_duration_days: int = 12
+    night_duration_days: int = 14
     downtime_duration_days: int = 2
+    has_midnight: bool = True       # Split each night into Dusk→Midnight + Midnight→Sunrise
+    xp_frequency: str = 'weekly'   # 'weekly' (split) | 'biweekly' (single window per night)
     notes: str = ''
 
 

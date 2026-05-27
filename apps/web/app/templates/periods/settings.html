@@ -11,18 +11,22 @@
 </div>
 
 <div class="row">
-  <div class="col-lg-6">
-    <div class="card mb-4">
-      <div class="card-header">
-        <h5 class="mb-0"><i class="bi bi-sliders"></i> Cycle Configuration</h5>
-      </div>
-      <div class="card-body">
-        <form method="POST" action="{{ url_for('periods.settings') }}">
+  <div class="col-lg-7">
+    <form method="POST" action="{{ url_for('periods.settings') }}">
+
+      <!-- ── Basic Cycle Config ── -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h5 class="mb-0"><i class="bi bi-sliders"></i> Cycle Configuration</h5>
+        </div>
+        <div class="card-body">
           <div class="mb-3">
             <label class="form-label fw-semibold">Server Start Date</label>
             <input type="date" name="server_start_date" class="form-control"
                    value="{{ settings.server_start_date }}" required>
-            <div class="form-text text-muted">The date NYbN was founded. Used for week-count reference only.</div>
+            <div class="form-text text-muted">
+              The Monday NYbN launched. Used to calculate which night we're currently on.
+            </div>
           </div>
 
           <div class="mb-3">
@@ -30,7 +34,7 @@
             <input type="number" name="timeskip_interval_weeks" class="form-control"
                    min="1" max="52" value="{{ settings.timeskip_interval_weeks }}" required>
             <div class="form-text text-muted">
-              How often a downtime/timeskip happens.
+              How often a downtime/timeskip is inserted.
               Currently <strong>{{ settings.timeskip_interval_weeks }} weeks</strong>
               = every <strong>{{ nights_per_cycle }} night{{ 's' if nights_per_cycle != 1 }}</strong>.
               <br>
@@ -44,7 +48,10 @@
               <label class="form-label fw-semibold">Night Duration (days)</label>
               <input type="number" name="night_duration_days" class="form-control"
                      min="1" max="60" value="{{ settings.night_duration_days }}" required>
-              <div class="form-text text-muted">How long each play night runs.</div>
+              <div class="form-text text-muted">
+                Full length of one play night (e.g. 14 for bi-weekly).
+                Only used when <em>Midnight split</em> is off.
+              </div>
             </div>
             <div class="col-6">
               <label class="form-label fw-semibold">Downtime Duration (days)</label>
@@ -53,22 +60,84 @@
               <div class="form-text text-muted">Length of downtime entries.</div>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- ── XP Award Structure ── -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h5 class="mb-0"><i class="bi bi-moon-stars"></i> XP Award Structure</h5>
+        </div>
+        <div class="card-body">
 
           <div class="mb-3">
-            <label class="form-label fw-semibold">Notes</label>
-            <textarea name="notes" class="form-control" rows="3"
-                      placeholder="e.g. Switched to 8-week cycle on 3/16/2026">{{ settings.notes }}</textarea>
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" role="switch"
+                     id="has_midnight" name="has_midnight"
+                     {% if settings.has_midnight %}checked{% endif %}>
+              <label class="form-check-label fw-semibold" for="has_midnight">
+                Server has a Midnight event
+              </label>
+            </div>
+            <div class="form-text text-muted ms-4">
+              NYbN: Saturday 2pm marks <em>Midnight</em>, splitting the two-week night into
+              two IC phases (Dusk → Midnight and Midnight → Sunrise).
+            </div>
           </div>
 
-          <button type="submit" class="btn btn-danger">
-            <i class="bi bi-save"></i> Save Settings
-          </button>
-        </form>
+          <div class="mb-1">
+            <label class="form-label fw-semibold">XP Award Frequency</label>
+          </div>
+          <div class="form-check mb-1">
+            <input class="form-check-input" type="radio" name="xp_frequency" id="xpw"
+                   value="weekly" {% if settings.xp_frequency == 'weekly' %}checked{% endif %}>
+            <label class="form-check-label" for="xpw">
+              <strong>Weekly</strong>
+              <span class="text-muted small ms-1">
+                — one XP submission window per half-night (Dusk→Midnight + Midnight→Sunrise).
+                Requires <em>Midnight event</em> checked above.
+              </span>
+            </label>
+          </div>
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="radio" name="xp_frequency" id="xpbw"
+                   value="biweekly" {% if settings.xp_frequency == 'biweekly' %}checked{% endif %}>
+            <label class="form-check-label" for="xpbw">
+              <strong>Bi-weekly</strong>
+              <span class="text-muted small ms-1">
+                — one XP submission window per full night (Night N as a single period).
+              </span>
+            </label>
+          </div>
+
+          <div class="alert alert-secondary py-2 small mb-0">
+            <i class="bi bi-info-circle me-1"></i>
+            <strong>NYbN default:</strong> Midnight <strong>on</strong>, frequency
+            <strong>Weekly</strong>. The generator will produce
+            <em>"Night N — Dusk to Midnight (Mon – Sat)"</em> and
+            <em>"Night N — Midnight to Sunrise (Sat – Sat)"</em> per night.
+          </div>
+        </div>
       </div>
-    </div>
+
+      <!-- ── Notes ── -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h5 class="mb-0"><i class="bi bi-sticky"></i> Notes</h5>
+        </div>
+        <div class="card-body">
+          <textarea name="notes" class="form-control" rows="3"
+                    placeholder="e.g. Switched to 8-week cycle on 3/16/2026">{{ settings.notes }}</textarea>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-danger">
+        <i class="bi bi-save"></i> Save Settings
+      </button>
+    </form>
   </div>
 
-  <div class="col-lg-6">
+  <div class="col-lg-5">
     <div class="card mb-4">
       <div class="card-header">
         <h5 class="mb-0"><i class="bi bi-info-circle"></i> How Auto-Generation Works</h5>
@@ -76,21 +145,35 @@
       <div class="card-body text-muted small">
         <p>When you click <strong>Generate</strong> on the Play Periods page:</p>
         <ol>
-          <li>The system finds the latest end date in the DB.</li>
-          <li>The next night starts on the <strong>first Monday</strong> after that date.</li>
-          <li>It runs for <strong>{{ settings.night_duration_days }} days</strong>.</li>
-          <li>After every <strong>{{ nights_per_cycle }} night{{ 's' if nights_per_cycle != 1 }}</strong>
-              (~{{ settings.timeskip_interval_weeks }} weeks), a
-              <strong>{{ settings.downtime_duration_days }}-day downtime</strong> is inserted
-              before the next night.</li>
-          <li>Nights that already exist are skipped — safe to run multiple times.</li>
+          <li>The system finds the latest end date in the DB (or calculates from your start date).</li>
+          <li>The next night starts on the <strong>first Monday</strong> on or after that date.</li>
+          {% if settings.has_midnight and settings.xp_frequency == 'weekly' %}
+          <li>
+            Because <strong>Midnight + Weekly</strong> is on, each night creates
+            <strong>two periods</strong>:
+            <ul class="mt-1">
+              <li><em>Dusk to Midnight</em> — Mon → Sat (6 days)</li>
+              <li><em>Midnight to Sunrise</em> — Sat → Sat (8 days)</li>
+            </ul>
+          </li>
+          {% else %}
+          <li>Each night runs for <strong>{{ settings.night_duration_days }} days</strong>.</li>
+          {% endif %}
+          <li>
+            After every <strong>{{ nights_per_cycle }} night{{ 's' if nights_per_cycle != 1 }}</strong>
+            (~{{ settings.timeskip_interval_weeks }} weeks), a
+            <strong>{{ settings.downtime_duration_days }}-day downtime</strong> is inserted.
+          </li>
+          <li>Periods that already exist are skipped — safe to run multiple times.</li>
         </ol>
         <hr class="border-secondary">
-        <p class="mb-0">
-          <strong>Night numbering:</strong> Downtime/timeskip entries get night number 0.
-          Only play nights increment the counter.
-          NYbN is currently on <strong>Night {{ settings.server_start_date | replace('-', '') }}</strong>
-          — if the DB is empty, generation starts at Night 62.
+        <p><strong>Night numbering:</strong> Downtime entries get night number 0. Only play
+          nights increment the counter. The counter is calculated from your server start date
+          when the DB is empty.</p>
+        <p class="mb-0 text-warning small">
+          <i class="bi bi-exclamation-triangle me-1"></i>
+          If you delete all periods and regenerate, the generator starts from the current
+          ongoing night — it won't backfill historical nights. Create those manually if needed.
         </p>
       </div>
     </div>
@@ -100,7 +183,12 @@
         <h5 class="mb-0"><i class="bi bi-magic"></i> Quick Generate</h5>
       </div>
       <div class="card-body">
-        <p class="text-muted small">Generate upcoming nights right from here:</p>
+        <p class="text-muted small">
+          Generate upcoming nights right from here
+          {% if settings.has_midnight and settings.xp_frequency == 'weekly' %}
+          <span class="badge bg-secondary">2 periods per night</span>
+          {% endif %}:
+        </p>
         <form method="POST" action="{{ url_for('periods.generate') }}" class="d-flex gap-2">
           <select name="count" class="form-select form-select-sm" style="width:auto">
             <option value="4">4 nights</option>

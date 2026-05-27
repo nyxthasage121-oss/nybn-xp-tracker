@@ -55,12 +55,16 @@ class DbChronicleSettings(db.Model):
     """Singleton row (id=1) — stores chronicle schedule configuration."""
     __tablename__ = 'chronicle_settings'
     id = db.Column(Integer, primary_key=True)
-    server_start_date = db.Column(String(10), default='2023-04-13')   # YYYY-MM-DD
+    server_start_date = db.Column(String(10), default='2023-04-10')   # YYYY-MM-DD
     # How many calendar weeks between timeskip/downtime events.
     # Changed from 4 → 8 on 3/16/2026.
     timeskip_interval_weeks = db.Column(Integer, default=8)
-    night_duration_days = db.Column(Integer, default=12)   # length of a play night
+    night_duration_days = db.Column(Integer, default=14)   # length of a play night
     downtime_duration_days = db.Column(Integer, default=2) # length of the downtime gap
+    # NYbN night structure: has a Midnight event (Sat 2pm) splitting the night in two.
+    # When True, generator creates "Dusk to Midnight" (Mon-Sat) + "Midnight to Sunrise" (Sat-Sat).
+    has_midnight = db.Column(Boolean, default=True)
+    xp_frequency = db.Column(String(20), default='weekly')  # 'weekly' | 'biweekly'
     notes = db.Column(Text, default='')
 
 

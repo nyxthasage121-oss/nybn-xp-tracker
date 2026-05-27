@@ -5,7 +5,7 @@
 {% block content %}
 <div class="container mt-4">
   <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-    <h1 class="mb-0">Coteries</h1>
+    <h1 class="mb-0 page-heading">Coteries</h1>
     <button class="btn btn-danger" data-bs-toggle="collapse" data-bs-target="#create-coterie-form">
       <i class="bi bi-plus-lg"></i> New Coterie
     </button>
@@ -292,15 +292,20 @@
         </ul>
         <h6 class="text-danger mt-3">Chasse &amp; Site Entitlement</h6>
         <div class="table-responsive">
-        <table class="table table-dark table-sm mb-3">
-          <thead><tr><th>Chasse</th><th>Sites Entitled</th><th>Hunting DC (coterie channel)</th></tr></thead>
+        <table class="table table-dark table-sm mb-2">
+          <thead><tr><th>Chasse</th><th>Sites Entitled</th></tr></thead>
           <tbody>
-            <tr><td>0 – 1</td><td>0 sites</td><td>Chasse 1 → DC 5</td></tr>
-            <tr><td>2 – 3</td><td>1 site</td><td>Chasse 2 → DC 4 / Chasse 3 → DC 3</td></tr>
-            <tr><td>4</td><td>2 sites</td><td>Chasse 4 → DC 2</td></tr>
-            <tr><td>5</td><td>3 sites</td><td>Chasse 5 → DC 1</td></tr>
+            <tr><td>0</td><td>0 sites</td></tr>
+            <tr><td>1 – 3</td><td>1 site</td></tr>
+            <tr><td>4</td><td>2 sites</td></tr>
+            <tr><td>5</td><td>3 sites</td></tr>
           </tbody>
         </table>
+        </div>
+        <div class="alert alert-secondary py-2 small mb-0">
+          <i class="bi bi-info-circle me-1"></i>
+          <strong>NYbN note:</strong> Hunting DCs are determined by the <strong>specific site</strong>, not Chasse rating.
+          Check the site's predator type entries for the actual DC.
         </div>
         <h6 class="text-danger mt-3">Coterie Spends (Ratings)</h6>
         <ul class="small">
